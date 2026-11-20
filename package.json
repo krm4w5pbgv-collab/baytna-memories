@@ -1,4 +1,3 @@
-
 {
   "name": "baytna-memories",
   "version": "1.0.0",
@@ -13,6 +12,7 @@
     "express-session": "^1.18.1",
     "helmet": "^8.0.0",
     "pg": "^8.13.1",
-    "multer": "^2.0.2"
+    "multer": "^2.0.2",
+    "@supabase/supabase-js": "^2.57.0"
   }
 }
