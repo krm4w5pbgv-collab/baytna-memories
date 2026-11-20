@@ -360,9 +360,15 @@ app.get("/", (req, res) => {
 });
 
 app.use((error, req, res, next) => {
-  console.error(error.message || error);
-  res.status(500).json({
-    error: "حدث خطأ في الخادم. تحقق من إعدادات التخزين."
+  console.error("========== SERVER ERROR ==========");
+  console.error("Name:", error.name);
+  console.error("Message:", error.message);
+  console.error("Status:", error.statusCode || error.status || "unknown");
+  console.error("Code:", error.code || "unknown");
+  console.error("==================================");
+
+  res.status(error.statusCode || 500).json({
+    error: error.message || "حدث خطأ في الخادم."
   });
 });
 
@@ -373,6 +379,6 @@ initializeDatabase()
     });
   })
   .catch(error => {
-    console.error("Database initialization failed:", error);
+    console.error("Database initialization failed:", error.message);
     process.exit(1);
   });
