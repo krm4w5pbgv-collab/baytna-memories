@@ -16,9 +16,11 @@ const BUCKET = "baytna-private-photos";
 if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
   throw new Error("SESSION_SECRET must be at least 32 characters.");
 }
+
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is missing.");
 }
+
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
   throw new Error("Supabase environment variables are missing.");
 }
@@ -33,11 +35,17 @@ const pool = new Pool({
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SECRET_KEY,
-  { auth: { persistSession: false, autoRefreshToken: false } }
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  }
 );
 
 const accounts = Array.from({ length: 7 }, (_, i) => {
   const number = i + 1;
+
   return {
     number,
     username: process.env[`ACCOUNT_${number}_USERNAME`],
@@ -69,7 +77,9 @@ app.use(session({
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: {
+    fileSize: 5 * 1024 * 1024
+  },
   fileFilter: (req, file, callback) => {
     const allowed = [
       "image/jpeg",
@@ -83,14 +93,18 @@ const upload = multer({
     if (!allowed.includes(file.mimetype)) {
       return callback(new Error("نوع الصورة غير مدعوم."));
     }
+
     callback(null, true);
   }
 });
 
 function requireLogin(req, res, next) {
   if (!req.session.account) {
-    return res.status(401).json({ error: "سجّل الدخول أولًا." });
+    return res.status(401).json({
+      error: "سجّل الدخول أولًا."
+    });
   }
+
   next();
 }
 
@@ -103,6 +117,7 @@ function extensionFor(mime) {
     "image/heic": "heic",
     "image/heif": "heif"
   };
+
   return extensions[mime];
 }
 
@@ -171,6 +186,7 @@ async function initializeDatabase() {
   if (countResult.rows[0].count === 0) {
     for (const account of accounts) {
       const hash = await bcrypt.hash(account.password, 12);
+
       await pool.query(
         `INSERT INTO accounts (number, username, password_hash)
          VALUES ($1, $2, $3)
@@ -183,6 +199,7 @@ async function initializeDatabase() {
   console.log("Database initialized.");
 }
 
+// تسجيل الدخول
 app.post("/api/login", async (req, res, next) => {
   try {
     const { username, password } = req.body || {};
@@ -195,7 +212,8 @@ app.post("/api/login", async (req, res, next) => {
 
     const result = await pool.query(
       `SELECT number, username, password_hash
-       FROM accounts WHERE username = $1`,
+       FROM accounts
+       WHERE username = $1`,
       [username]
     );
 
@@ -217,7 +235,11 @@ app.post("/api/login", async (req, res, next) => {
 
       req.session.save(error => {
         if (error) return next(error);
-        res.json({ success: true, account: req.session.account });
+
+        res.json({
+          success: true,
+          account: req.session.account
+        });
       });
     });
   } catch (error) {
@@ -225,6 +247,7 @@ app.post("/api/login", async (req, res, next) => {
   }
 });
 
+// معلومات الحساب الحالي
 app.get("/api/me", (req, res) => {
   res.json({
     authenticated: Boolean(req.session.account),
@@ -232,6 +255,7 @@ app.get("/api/me", (req, res) => {
   });
 });
 
+// حفظ صورة خاصة
 app.post(
   "/api/memories/private",
   requireLogin,
@@ -239,11 +263,14 @@ app.post(
   async (req, res, next) => {
     try {
       if (!req.file) {
-        return res.status(400).json({ error: "اختر صورة أولًا." });
+        return res.status(400).json({
+          error: "اختر صورة أولًا."
+        });
       }
 
       const extension = extensionFor(req.file.mimetype);
       const accountNumber = req.session.account.number;
+
       const storagePath =
         `${accountNumber}/${crypto.randomUUID()}.${extension}`;
 
@@ -276,12 +303,14 @@ app.post(
   }
 );
 
+// عرض الصور الخاصة
 app.get("/api/memories/private", requireLogin, async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT id, storage_path, caption, created_at
        FROM memories
-       WHERE owner_account_id = $1 AND visibility = 'private'
+       WHERE owner_account_id = $1
+         AND visibility = 'private'
        ORDER BY created_at DESC`,
       [req.session.account.number]
     );
@@ -309,19 +338,148 @@ app.get("/api/memories/private", requireLogin, async (req, res, next) => {
   }
 });
 
+// نشر صورة خاصة في الذكريات العامة
+app.post("/api/memories/:id/publish", requireLogin, async (req, res, next) => {
+  try {
+    const caption = String(req.body.caption || "").slice(0, 500);
+
+    const result = await pool.query(
+      `UPDATE memories
+       SET visibility = 'public',
+           caption = CASE
+             WHEN $1 = '' THEN caption
+             ELSE $1
+           END
+       WHERE id = $2
+         AND owner_account_id = $3
+         AND visibility = 'private'
+       RETURNING id, caption, created_at`,
+      [
+        caption,
+        req.params.id,
+        req.session.account.number
+      ]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({
+        error: "الصورة غير موجودة أو سبق نشرها."
+      });
+    }
+
+    res.json({
+      success: true,
+      memory: result.rows[0]
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// عرض الذكريات العامة والبحث
+app.get("/api/memories/public", requireLogin, async (req, res, next) => {
+  try {
+    const search = String(req.query.q || "").trim().slice(0, 80);
+
+    let result;
+
+    if (/^\d{4}$/.test(search)) {
+      result = await pool.query(
+        `SELECT
+           m.id,
+           m.storage_path,
+           m.caption,
+           m.created_at,
+           a.username
+         FROM memories m
+         JOIN accounts a ON a.number = m.owner_account_id
+         WHERE m.visibility = 'public'
+           AND (
+             m.caption ILIKE $1
+             OR EXTRACT(YEAR FROM m.created_at)::int = $2
+             OR m.id::text = $3
+           )
+         ORDER BY m.created_at DESC
+         LIMIT 100`,
+        [`%${search}%`, Number(search), search]
+      );
+    } else if (search) {
+      result = await pool.query(
+        `SELECT
+           m.id,
+           m.storage_path,
+           m.caption,
+           m.created_at,
+           a.username
+         FROM memories m
+         JOIN accounts a ON a.number = m.owner_account_id
+         WHERE m.visibility = 'public'
+           AND (
+             m.caption ILIKE $1
+             OR a.username ILIKE $1
+             OR m.id::text = $2
+           )
+         ORDER BY m.created_at DESC
+         LIMIT 100`,
+        [`%${search}%`, search]
+      );
+    } else {
+      result = await pool.query(
+        `SELECT
+           m.id,
+           m.storage_path,
+           m.caption,
+           m.created_at,
+           a.username
+         FROM memories m
+         JOIN accounts a ON a.number = m.owner_account_id
+         WHERE m.visibility = 'public'
+         ORDER BY m.created_at DESC
+         LIMIT 100`
+      );
+    }
+
+    const memories = [];
+
+    for (const memory of result.rows) {
+      const { data, error } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrl(memory.storage_path, 3600);
+
+      if (error) throw error;
+
+      memories.push({
+        id: memory.id,
+        username: memory.username,
+        caption: memory.caption,
+        created_at: memory.created_at,
+        image_url: data.signedUrl
+      });
+    }
+
+    res.json({ memories });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// حذف صورة يملكها الحساب
 app.delete("/api/memories/:id", requireLogin, async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT id, storage_path
        FROM memories
-       WHERE id = $1 AND owner_account_id = $2`,
+       WHERE id = $1
+         AND owner_account_id = $2`,
       [req.params.id, req.session.account.number]
     );
 
     const memory = result.rows[0];
 
     if (!memory) {
-      return res.status(404).json({ error: "الصورة غير موجودة." });
+      return res.status(404).json({
+        error: "الصورة غير موجودة."
+      });
     }
 
     if (memory.storage_path) {
@@ -333,7 +491,8 @@ app.delete("/api/memories/:id", requireLogin, async (req, res, next) => {
     }
 
     await pool.query(
-      "DELETE FROM memories WHERE id = $1 AND owner_account_id = $2",
+      `DELETE FROM memories
+       WHERE id = $1 AND owner_account_id = $2`,
       [memory.id, req.session.account.number]
     );
 
@@ -343,22 +502,28 @@ app.delete("/api/memories/:id", requireLogin, async (req, res, next) => {
   }
 });
 
+// تسجيل الخروج
 app.post("/api/logout", (req, res) => {
   req.session.destroy(error => {
     if (error) {
-      return res.status(500).json({ error: "تعذر تسجيل الخروج." });
+      return res.status(500).json({
+        error: "تعذر تسجيل الخروج."
+      });
     }
+
     res.clearCookie("baytna.sid");
     res.json({ success: true });
   });
 });
 
+// الملفات والصفحات
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+// معالجة الأخطاء
 app.use((error, req, res, next) => {
   console.error("========== SERVER ERROR ==========");
   console.error("Name:", error.name);
@@ -367,11 +532,14 @@ app.use((error, req, res, next) => {
   console.error("Code:", error.code || "unknown");
   console.error("==================================");
 
-  res.status(error.statusCode || 500).json({
-    error: error.message || "حدث خطأ في الخادم."
+  res.status(error.statusCode || error.status || 500).json({
+    error: error.statusCode && error.statusCode < 500
+      ? error.message
+      : "حدث خطأ في الخادم. حاول مرة أخرى."
   });
 });
 
+// تشغيل الموقع
 initializeDatabase()
   .then(() => {
     app.listen(PORT, () => {
