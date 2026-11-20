@@ -16,18 +16,14 @@ const AVATAR_BUCKET = "baytna-private-photos";
 
 if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32)
   throw new Error("SESSION_SECRET must be at least 32 characters.");
-
-if (!process.env.DATABASE_URL)
-  throw new Error("DATABASE_URL is missing.");
-
+if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is missing.");
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY)
   throw new Error("Supabase environment variables are missing.");
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL.includes("localhost")
-    ? false
-    : { rejectUnauthorized: false }
+    ? false : { rejectUnauthorized: false }
 });
 
 const supabase = createClient(
@@ -91,10 +87,9 @@ function requireSettingsUnlocked(req, res, next) {
   if (!unlockedAt || Date.now() - unlockedAt > 10 * 60 * 1000) {
     delete req.session.settingsUnlockedAt;
     return res.status(403).json({
-      error: "افتح إعدادات الحساب بكلمة المرور أولًا."
+      error: "افتح إعدادات الحساب بكلمة مرور الإعدادات أولًا."
     });
   }
-
   next();
 }
 
@@ -124,6 +119,12 @@ async function initializeDatabase() {
     ADD COLUMN IF NOT EXISTS avatar_path TEXT
   `);
 
+  // كلمة مرور مستقلة لإعدادات كل حساب
+  await pool.query(`
+    ALTER TABLE accounts
+    ADD COLUMN IF NOT EXISTS settings_password_hash TEXT
+  `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS memories (
       id BIGSERIAL PRIMARY KEY,
@@ -140,7 +141,6 @@ async function initializeDatabase() {
   await pool.query(`
     ALTER TABLE memories ADD COLUMN IF NOT EXISTS storage_path TEXT
   `);
-
   await pool.query(`
     ALTER TABLE memories ALTER COLUMN image_url DROP NOT NULL
   `);
@@ -192,7 +192,9 @@ app.post("/api/login", async (req, res, next) => {
   try {
     const { username, password } = req.body || {};
     if (!username || !password)
-      return res.status(400).json({ error: "اكتب اسم المستخدم وكلمة المرور." });
+      return res.status(400).json({
+        error: "اكتب اسم المستخدم وكلمة المرور."
+      });
 
     const result = await pool.query(
       `SELECT number, username, password_hash
@@ -203,7 +205,9 @@ app.post("/api/login", async (req, res, next) => {
     const account = result.rows[0];
 
     if (!account || !(await bcrypt.compare(password, account.password_hash)))
-      return res.status(401).json({ error: "اسم المستخدم أو كلمة المرور غير صحيحة." });
+      return res.status(401).json({
+        error: "اسم المستخدم أو كلمة المرور غير صحيحة."
+      });
 
     req.session.regenerate(error => {
       if (error) return next(error);
@@ -238,7 +242,6 @@ app.get("/api/me", async (req, res, next) => {
       return res.status(404).json({ error: "الحساب غير موجود." });
 
     let avatar_url = null;
-
     if (account.avatar_path) {
       const signed = await supabase.storage
         .from(AVATAR_BUCKET)
@@ -261,27 +264,92 @@ app.get("/api/me", async (req, res, next) => {
   }
 });
 
-// فتح إعدادات الحساب بعد التحقق من كلمة المرور
+// معرفة هل تم إنشاء كلمة مرور الإعدادات
+app.get("/api/account/settings-status", requireLogin, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT settings_password_hash IS NOT NULL AS has_password
+       FROM accounts WHERE number = $1`,
+      [req.session.account.number]
+    );
+
+    if (!result.rows.length)
+      return res.status(404).json({ error: "الحساب غير موجود." });
+
+    res.json({ hasPassword: result.rows[0].has_password });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// إنشاء كلمة مرور الإعدادات لأول مرة
+app.post("/api/account/settings-password", requireLogin, async (req, res, next) => {
+  try {
+    const password = String(req.body.password || "");
+    const confirmPassword = String(req.body.confirmPassword || "");
+
+    if (password.length < 8 || password.length > 100)
+      return res.status(400).json({
+        error: "كلمة المرور يجب أن تكون من 8 إلى 100 حرف."
+      });
+
+    if (password !== confirmPassword)
+      return res.status(400).json({
+        error: "كلمتا المرور غير متطابقتين."
+      });
+
+    const hash = await bcrypt.hash(password, 12);
+
+    const result = await pool.query(
+      `UPDATE accounts
+       SET settings_password_hash = $1
+       WHERE number = $2 AND settings_password_hash IS NULL
+       RETURNING number`,
+      [hash, req.session.account.number]
+    );
+
+    if (!result.rows.length)
+      return res.status(409).json({
+        error: "تم إنشاء كلمة مرور الإعدادات مسبقًا."
+      });
+
+    req.session.settingsUnlockedAt = Date.now();
+
+    req.session.save(error => {
+      if (error) return next(error);
+      res.json({ success: true });
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// فتح الإعدادات بكلمة المرور المستقلة
 app.post("/api/account/settings-unlock", requireLogin, async (req, res, next) => {
   try {
     const password = String(req.body.password || "");
 
     if (!password)
       return res.status(400).json({
-        error: "اكتب كلمة المرور الحالية."
+        error: "اكتب كلمة مرور الإعدادات."
       });
 
     const result = await pool.query(
-      "SELECT password_hash FROM accounts WHERE number = $1",
+      "SELECT settings_password_hash FROM accounts WHERE number = $1",
       [req.session.account.number]
     );
 
-    if (!result.rows.length ||
-        !(await bcrypt.compare(password, result.rows[0].password_hash))) {
-      return res.status(401).json({
-        error: "كلمة المرور غير صحيحة."
+    const hash = result.rows[0]?.settings_password_hash;
+
+    if (!hash)
+      return res.status(409).json({
+        error: "أنشئ كلمة مرور الإعدادات أولًا."
       });
-    }
+
+    if (!(await bcrypt.compare(password, hash)))
+      return res.status(401).json({
+        error: "كلمة مرور الإعدادات غير صحيحة."
+      });
 
     req.session.settingsUnlockedAt = Date.now();
 
@@ -314,28 +382,25 @@ app.post(
           error: "اكتب كلمة المرور الحالية."
         });
 
-      const accountNumber = req.session.account.number;
-
+      const number = req.session.account.number;
       const current = await pool.query(
         "SELECT password_hash FROM accounts WHERE number = $1",
-        [accountNumber]
+        [number]
       );
 
       if (!current.rows.length ||
           !(await bcrypt.compare(password, current.rows[0].password_hash)))
         return res.status(401).json({
-          error: "كلمة المرور غير صحيحة."
+          error: "كلمة مرور الحساب غير صحيحة."
         });
 
       const updated = await pool.query(
         `UPDATE accounts SET username = $1
-         WHERE number = $2
-         RETURNING number, username`,
-        [username, accountNumber]
+         WHERE number = $2 RETURNING number, username`,
+        [username, number]
       );
 
       req.session.account.username = updated.rows[0].username;
-
       res.json({ success: true, account: updated.rows[0] });
     } catch (error) {
       if (error.code === "23505")
@@ -347,7 +412,7 @@ app.post(
   }
 );
 
-// تغيير كلمة المرور
+// تغيير كلمة مرور الحساب
 app.post(
   "/api/account/password",
   requireLogin,
@@ -362,11 +427,10 @@ app.post(
           error: "كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل."
         });
 
-      const accountNumber = req.session.account.number;
-
+      const number = req.session.account.number;
       const result = await pool.query(
         "SELECT password_hash FROM accounts WHERE number = $1",
-        [accountNumber]
+        [number]
       );
 
       if (!result.rows.length ||
@@ -376,10 +440,9 @@ app.post(
         });
 
       const hash = await bcrypt.hash(newPassword, 12);
-
       await pool.query(
         "UPDATE accounts SET password_hash = $1 WHERE number = $2",
-        [hash, accountNumber]
+        [hash, number]
       );
 
       res.json({ success: true });
@@ -400,9 +463,7 @@ app.post(
 
     try {
       if (!req.file)
-        return res.status(400).json({
-          error: "اختر صورة أولًا."
-        });
+        return res.status(400).json({ error: "اختر صورة أولًا." });
 
       const extension = extensionFor(req.file.mimetype);
       const number = req.session.account.number;
@@ -435,19 +496,13 @@ app.post(
       );
 
       const oldPath = old.rows[0]?.avatar_path;
-
-      if (oldPath) {
+      if (oldPath)
         await supabase.storage.from(AVATAR_BUCKET).remove([oldPath]);
-      }
 
-      res.json({
-        success: true,
-        avatar_url: signed.data.signedUrl
-      });
+      res.json({ success: true, avatar_url: signed.data.signedUrl });
     } catch (error) {
-      if (uploadedPath) {
+      if (uploadedPath)
         await supabase.storage.from(AVATAR_BUCKET).remove([uploadedPath]);
-      }
       next(error);
     }
   }
@@ -468,12 +523,10 @@ app.post("/api/memories/private", requireLogin, upload.single("photo"), async (r
       storagePath, req.file.buffer,
       { contentType: req.file.mimetype, upsert: false }
     );
-
     if (error) throw error;
     uploadedPath = storagePath;
 
     const caption = String(req.body.caption || "").slice(0, 500);
-
     const result = await pool.query(
       `INSERT INTO memories
        (owner_account_id, storage_path, caption, visibility)
@@ -502,7 +555,6 @@ app.get("/api/memories/private", requireLogin, async (req, res, next) => {
     );
 
     const memories = [];
-
     for (const memory of result.rows) {
       const { data, error } = await supabase.storage
         .from(BUCKET).createSignedUrl(memory.storage_path, 600);
@@ -514,7 +566,6 @@ app.get("/api/memories/private", requireLogin, async (req, res, next) => {
         image_url: data.signedUrl
       });
     }
-
     res.json({ memories });
   } catch (error) {
     next(error);
@@ -529,7 +580,6 @@ app.post("/api/memories/:id/publish", requireLogin, async (req, res, next) => {
     const number = req.session.account.number;
 
     await client.query("BEGIN");
-
     const result = await client.query(
       `UPDATE memories SET visibility = 'public',
        caption = CASE WHEN $1 = '' THEN caption ELSE $1 END
@@ -546,12 +596,10 @@ app.post("/api/memories/:id/publish", requireLogin, async (req, res, next) => {
       });
     }
 
-    const memoryId = result.rows[0].id;
-
     await client.query(
       `INSERT INTO notifications (account_number, memory_id)
        SELECT number, $1 FROM accounts WHERE number <> $2`,
-      [memoryId, number]
+      [result.rows[0].id, number]
     );
 
     await client.query("COMMIT");
@@ -680,7 +728,8 @@ app.delete("/api/memories/:id", requireLogin, async (req, res, next) => {
       return res.status(404).json({ error: "الصورة غير موجودة." });
 
     if (memory.storage_path) {
-      const { error } = await supabase.storage.from(BUCKET).remove([memory.storage_path]);
+      const { error } = await supabase.storage
+        .from(BUCKET).remove([memory.storage_path]);
       if (error) throw error;
     }
 
