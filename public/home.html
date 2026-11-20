@@ -38,15 +38,8 @@ input[type=text],input[type=password]{
 .notification{border-bottom:1px solid #dfcbb4;padding:12px 0;line-height:1.8}
 .notification.unread{background:#f5eee4;padding:12px;border-radius:8px}
 .readButton{padding:8px 12px;font-size:13px;margin-top:7px}
-.avatar{
- width:95px;height:95px;border-radius:50%;object-fit:cover;
- border:3px solid #dfcbb4;background:#eee4d8;display:block;margin:10px auto
-}
-.avatar-placeholder{
- width:95px;height:95px;border-radius:50%;background:#dfcbb4;
- display:flex;align-items:center;justify-content:center;
- font-size:38px;margin:10px auto
-}
+.avatar{width:95px;height:95px;border-radius:50%;object-fit:cover;border:3px solid #dfcbb4;background:#eee4d8;display:block;margin:10px auto}
+.avatar-placeholder{width:95px;height:95px;border-radius:50%;background:#dfcbb4;display:flex;align-items:center;justify-content:center;font-size:38px;margin:10px auto}
 .settings-form{border-top:1px solid #dfcbb4;padding-top:18px;margin-top:18px}
 </style>
 </head>
@@ -65,11 +58,24 @@ input[type=text],input[type=password]{
 </div>
 </section>
 
-<!-- قفل إعدادات الحساب -->
+<!-- إنشاء كلمة مرور الإعدادات -->
+<section class="card" id="settingsSetupCard" style="display:none">
+<h2>🔐 إنشاء كلمة مرور الإعدادات</h2>
+<p>أنشئ كلمة مرور مستقلة عن كلمة مرور تسجيل الدخول. ستحتاج إليها لفتح إعدادات الحساب.</p>
+<input type="password" id="newSettingsPassword" placeholder="كلمة مرور الإعدادات الجديدة" autocomplete="new-password">
+<input type="password" id="confirmSettingsPassword" placeholder="تأكيد كلمة مرور الإعدادات" autocomplete="new-password">
+<div class="buttons">
+<button onclick="createSettingsPassword()">إنشاء كلمة المرور</button>
+<button class="delete" onclick="closeSettingsSetup()">إلغاء</button>
+</div>
+<div class="status" id="settingsSetupStatus"></div>
+</section>
+
+<!-- فتح إعدادات الحساب -->
 <section class="card" id="settingsLockCard" style="display:none">
 <h2>🔒 تأكيد الهوية</h2>
-<p>أدخل كلمة المرور الحالية لفتح إعدادات الحساب.</p>
-<input type="password" id="settingsUnlockPassword" placeholder="كلمة المرور الحالية" autocomplete="current-password">
+<p>أدخل كلمة مرور الإعدادات المستقلة.</p>
+<input type="password" id="settingsUnlockPassword" placeholder="كلمة مرور الإعدادات" autocomplete="current-password">
 <div class="buttons">
 <button onclick="unlockSettings()">فتح الإعدادات</button>
 <button class="delete" onclick="closeSettingsLock()">إلغاء</button>
@@ -79,7 +85,6 @@ input[type=text],input[type=password]{
 
 <section class="card" id="settingsCard" style="display:none">
 <h2>⚙️ إعدادات الحساب</h2>
-
 <div class="buttons">
 <button class="delete" onclick="lockSettings()">🔒 قفل الإعدادات</button>
 </div>
@@ -96,15 +101,15 @@ input[type=text],input[type=password]{
 <div class="settings-form">
 <h3>✏️ تغيير اسم المستخدم</h3>
 <input type="text" id="newUsername" placeholder="اسم المستخدم الجديد">
-<input type="password" id="usernamePassword" placeholder="كلمة المرور الحالية">
+<input type="password" id="usernamePassword" placeholder="كلمة مرور الحساب الحالية">
 <button onclick="changeUsername()">حفظ اسم المستخدم</button>
 <div class="status" id="usernameStatus"></div>
 </div>
 
 <div class="settings-form">
-<h3>🔐 تغيير كلمة المرور</h3>
-<input type="password" id="currentPassword" placeholder="كلمة المرور الحالية">
-<input type="password" id="newPassword" placeholder="كلمة المرور الجديدة">
+<h3>🔐 تغيير كلمة مرور الحساب</h3>
+<input type="password" id="currentPassword" placeholder="كلمة مرور الحساب الحالية">
+<input type="password" id="newPassword" placeholder="كلمة مرور الحساب الجديدة">
 <input type="password" id="confirmPassword" placeholder="تأكيد كلمة المرور الجديدة">
 <button onclick="changePassword()">حفظ كلمة المرور</button>
 <div class="status" id="passwordStatus"></div>
@@ -171,9 +176,7 @@ function showAvatar(url,target){
  area.replaceChildren();
  if(url){
   const img=document.createElement("img");
-  img.className="avatar";
-  img.src=url;
-  img.alt="صورة الحساب";
+  img.className="avatar";img.src=url;img.alt="صورة الحساب";
   area.appendChild(img);
  }else{
   const placeholder=document.createElement("div");
@@ -183,10 +186,16 @@ function showAvatar(url,target){
  }
 }
 
+async function apiJson(url,options={}){
+ const response=await fetch(url,options);
+ const data=await response.json();
+ if(!response.ok)throw new Error(data.error||"حدث خطأ.");
+ return data;
+}
+
 async function loadAccount(){
  try{
-  const response=await fetch("/api/me");
-  const data=await response.json();
+  const data=await apiJson("/api/me");
   if(!data.authenticated){location.href="/";return;}
 
   document.getElementById("accountInfo").textContent=
@@ -205,44 +214,82 @@ async function loadAccount(){
  }
 }
 
-// فتح واجهة طلب كلمة المرور
-function toggleSettings(){
+async function toggleSettings(){
  const settings=document.getElementById("settingsCard");
- const lock=document.getElementById("settingsLockCard");
-
  if(settings.style.display==="block"){
   lockSettings();
   return;
  }
 
- lock.style.display="block";
- document.getElementById("settingsUnlockPassword").value="";
- document.getElementById("settingsLockStatus").textContent="";
+ closeSettingsLock();
+ closeSettingsSetup();
+
+ try{
+  const data=await apiJson("/api/account/settings-status");
+  if(data.hasPassword){
+   document.getElementById("settingsLockCard").style.display="block";
+   document.getElementById("settingsUnlockPassword").value="";
+   document.getElementById("settingsLockStatus").textContent="";
+  }else{
+   document.getElementById("settingsSetupCard").style.display="block";
+   document.getElementById("settingsSetupStatus").textContent="";
+  }
+ }catch(error){
+  alert(error.message);
+ }
 }
 
-// التحقق من كلمة المرور في الخادم
+async function createSettingsPassword(){
+ const password=document.getElementById("newSettingsPassword").value;
+ const confirmPassword=document.getElementById("confirmSettingsPassword").value;
+ const status=document.getElementById("settingsSetupStatus");
+
+ if(password.length<8){
+  status.textContent="كلمة المرور يجب أن تكون 8 أحرف على الأقل.";
+  return;
+ }
+ if(password!==confirmPassword){
+  status.textContent="كلمتا المرور غير متطابقتين.";
+  return;
+ }
+
+ status.textContent="جارٍ إنشاء كلمة المرور...";
+ try{
+  await apiJson("/api/account/settings-password",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({password,confirmPassword})
+  });
+
+  document.getElementById("newSettingsPassword").value="";
+  document.getElementById("confirmSettingsPassword").value="";
+  document.getElementById("settingsSetupCard").style.display="none";
+  document.getElementById("settingsCard").style.display="block";
+ }catch(error){
+  status.textContent=error.message;
+ }
+}
+
+function closeSettingsSetup(){
+ document.getElementById("settingsSetupCard").style.display="none";
+ document.getElementById("newSettingsPassword").value="";
+ document.getElementById("confirmSettingsPassword").value="";
+ document.getElementById("settingsSetupStatus").textContent="";
+}
+
 async function unlockSettings(){
  const password=document.getElementById("settingsUnlockPassword").value;
  const status=document.getElementById("settingsLockStatus");
 
- if(!password){
-  status.textContent="اكتب كلمة المرور الحالية.";
-  return;
- }
-
+ if(!password){status.textContent="اكتب كلمة مرور الإعدادات.";return;}
  status.textContent="جارٍ التحقق...";
 
  try{
-  const response=await fetch("/api/account/settings-unlock",{
+  await apiJson("/api/account/settings-unlock",{
    method:"POST",
    headers:{"Content-Type":"application/json"},
    body:JSON.stringify({password})
   });
-
-  const data=await response.json();
-
-  if(!response.ok)
-   throw new Error(data.error||"تعذر فتح الإعدادات.");
 
   document.getElementById("settingsLockCard").style.display="none";
   document.getElementById("settingsCard").style.display="block";
@@ -253,19 +300,16 @@ async function unlockSettings(){
  }
 }
 
-// إلغاء نافذة التحقق
 function closeSettingsLock(){
  document.getElementById("settingsLockCard").style.display="none";
  document.getElementById("settingsUnlockPassword").value="";
  document.getElementById("settingsLockStatus").textContent="";
 }
 
-// قفل الإعدادات
 function lockSettings(){
  document.getElementById("settingsCard").style.display="none";
- document.getElementById("settingsLockCard").style.display="none";
- document.getElementById("settingsUnlockPassword").value="";
- document.getElementById("settingsLockStatus").textContent="";
+ closeSettingsLock();
+ closeSettingsSetup();
 }
 
 function handlePhoto(input){
@@ -305,17 +349,13 @@ document.getElementById("avatarInput").addEventListener("change",function(){
 });
 
 async function uploadAvatar(){
- if(!selectedAvatar){
-  alert("اختر صورة أولًا.");return;
- }
+ if(!selectedAvatar){alert("اختر صورة أولًا.");return;}
  const status=document.getElementById("avatarStatus");
  status.textContent="جارٍ حفظ الصورة...";
  try{
   const formData=new FormData();
   formData.append("photo",selectedAvatar);
-  const response=await fetch("/api/account/avatar",{method:"POST",body:formData});
-  const data=await response.json();
-  if(!response.ok)throw new Error(data.error||"تعذر حفظ الصورة.");
+  const data=await apiJson("/api/account/avatar",{method:"POST",body:formData});
   selectedAvatar=null;
   document.getElementById("avatarInput").value="";
   if(avatarPreviewUrl){URL.revokeObjectURL(avatarPreviewUrl);avatarPreviewUrl=null;}
@@ -325,8 +365,7 @@ async function uploadAvatar(){
 }
 
 async function loadAccountInfoOnly(){
- const response=await fetch("/api/me");
- const data=await response.json();
+ const data=await apiJson("/api/me");
  if(data.authenticated){
   document.getElementById("accountInfo").textContent=
    "الحساب: "+data.account.username+" | الرقم: "+data.account.number;
@@ -339,16 +378,13 @@ async function changeUsername(){
  const username=document.getElementById("newUsername").value.trim();
  const password=document.getElementById("usernamePassword").value;
  const status=document.getElementById("usernameStatus");
- if(!username||!password){status.textContent="اكتب الاسم وكلمة المرور الحالية.";return;}
+ if(!username||!password){status.textContent="اكتب الاسم وكلمة مرور الحساب الحالية.";return;}
  status.textContent="جارٍ تحديث الاسم...";
  try{
-  const response=await fetch("/api/account/username",{
-   method:"POST",
-   headers:{"Content-Type":"application/json"},
+  await apiJson("/api/account/username",{
+   method:"POST",headers:{"Content-Type":"application/json"},
    body:JSON.stringify({username,password})
   });
-  const data=await response.json();
-  if(!response.ok)throw new Error(data.error||"تعذر تغيير الاسم.");
   document.getElementById("newUsername").value="";
   document.getElementById("usernamePassword").value="";
   status.textContent="تم تغيير اسم المستخدم بنجاح.";
@@ -374,13 +410,10 @@ async function changePassword(){
 
  status.textContent="جارٍ تحديث كلمة المرور...";
  try{
-  const response=await fetch("/api/account/password",{
-   method:"POST",
-   headers:{"Content-Type":"application/json"},
+  await apiJson("/api/account/password",{
+   method:"POST",headers:{"Content-Type":"application/json"},
    body:JSON.stringify({currentPassword,newPassword})
   });
-  const data=await response.json();
-  if(!response.ok)throw new Error(data.error||"تعذر تغيير كلمة المرور.");
   document.getElementById("currentPassword").value="";
   document.getElementById("newPassword").value="";
   document.getElementById("confirmPassword").value="";
@@ -403,11 +436,14 @@ async function savePhoto(){
  const status=document.getElementById("status");
  button.disabled=true;status.textContent="جارٍ حفظ الصورة...";
  try{
-  const formData=new FormData();
-  formData.append("photo",selectedFile);
-  const response=await fetch("/api/memories/private",{method:"POST",body:formData});
-  const data=await response.json();
-  if(!response.ok)throw new Error(data.error||"تعذر حفظ الصورة.");
+  await apiJson("/api/memories/private",{
+   method:"POST",
+   body:(()=>{
+    const formData=new FormData();
+    formData.append("photo",selectedFile);
+    return formData;
+   })()
+  });
   cancelPhoto();status.textContent="تم حفظ الصورة بنجاح.";
   await loadMemories();
  }catch(error){status.textContent=error.message;}
@@ -418,9 +454,7 @@ async function loadMemories(){
  const gallery=document.getElementById("gallery");
  const empty=document.getElementById("emptyMessage");
  try{
-  const response=await fetch("/api/memories/private");
-  const data=await response.json();
-  if(!response.ok)throw new Error(data.error);
+  const data=await apiJson("/api/memories/private");
   gallery.replaceChildren();
   empty.style.display=data.memories.length?"none":"block";
   data.memories.forEach(memory=>{
@@ -440,12 +474,10 @@ async function publishMemory(id){
  if(caption===null)return;
  if(!caption.trim()){alert("اكتب وصفًا للذكرى أولًا.");return;}
  try{
-  const response=await fetch("/api/memories/"+encodeURIComponent(id)+"/publish",{
+  await apiJson("/api/memories/"+encodeURIComponent(id)+"/publish",{
    method:"POST",headers:{"Content-Type":"application/json"},
    body:JSON.stringify({caption:caption.trim()})
   });
-  const data=await response.json();
-  if(!response.ok)throw new Error(data.error||"تعذر نشر الصورة.");
   alert("تم نشر الذكرى بنجاح! 🌍");
   await loadMemories();await loadPublicMemories();
  }catch(error){alert(error.message);}
@@ -456,9 +488,7 @@ async function loadPublicMemories(){
  const search=document.getElementById("publicSearch").value.trim();
  gallery.textContent="جارٍ تحميل الذكريات...";
  try{
-  const response=await fetch("/api/memories/public?q="+encodeURIComponent(search));
-  const data=await response.json();
-  if(!response.ok)throw new Error(data.error||"تعذر تحميل الذكريات.");
+  const data=await apiJson("/api/memories/public?q="+encodeURIComponent(search));
   gallery.replaceChildren();
   if(!data.memories.length){
    const empty=document.createElement("div");empty.className="empty";empty.textContent="لا توجد ذكريات منشورة.";gallery.appendChild(empty);return;
@@ -482,18 +512,14 @@ function clearSearch(){
 async function deleteMemory(id){
  if(!confirm("هل تريد حذف هذه الصورة؟"))return;
  try{
-  const response=await fetch("/api/memories/"+encodeURIComponent(id),{method:"DELETE"});
-  const data=await response.json();
-  if(!response.ok)throw new Error(data.error);
+  await apiJson("/api/memories/"+encodeURIComponent(id),{method:"DELETE"});
   await loadMemories();
  }catch(error){alert(error.message);}
 }
 
 async function loadNotifications(){
  try{
-  const response=await fetch("/api/notifications");
-  const data=await response.json();
-  if(!response.ok)throw new Error(data.error||"تعذر تحميل الإشعارات.");
+  const data=await apiJson("/api/notifications");
   document.getElementById("notificationCount").textContent=Number(data.unread_count||0);
   renderNotifications(data.notifications||[]);
  }catch(error){
@@ -535,18 +561,14 @@ function toggleNotifications(){
 
 async function readNotification(id){
  try{
-  const response=await fetch("/api/notifications/"+encodeURIComponent(id)+"/read",{method:"POST"});
-  const data=await response.json();
-  if(!response.ok)throw new Error(data.error||"تعذر تحديث الإشعار.");
+  await apiJson("/api/notifications/"+encodeURIComponent(id)+"/read",{method:"POST"});
   await loadNotifications();
  }catch(error){alert(error.message);}
 }
 
 async function readAllNotifications(){
  try{
-  const response=await fetch("/api/notifications/read-all",{method:"POST"});
-  const data=await response.json();
-  if(!response.ok)throw new Error(data.error||"تعذر تحديث الإشعارات.");
+  await apiJson("/api/notifications/read-all",{method:"POST"});
   await loadNotifications();
  }catch(error){alert(error.message);}
 }
@@ -560,9 +582,11 @@ async function logout(){
 document.getElementById("publicSearch").addEventListener("keydown",function(event){
  if(event.key==="Enter")loadPublicMemories();
 });
-
 document.getElementById("settingsUnlockPassword").addEventListener("keydown",function(event){
  if(event.key==="Enter")unlockSettings();
+});
+document.getElementById("confirmSettingsPassword").addEventListener("keydown",function(event){
+ if(event.key==="Enter")createSettingsPassword();
 });
 
 loadAccount();
