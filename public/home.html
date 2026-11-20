@@ -25,16 +25,29 @@ input[type=file]{display:none}
 .note{color:#8b684b;font-size:13px;line-height:1.8;margin-top:15px}
 .memory{border:1px solid #dfcbb4;border-radius:12px;padding:12px;margin-top:15px;background:#fffdf9}
 .memory p{white-space:pre-wrap;line-height:1.7}
-.status{margin-top:12px;color:#705034}
-input[type=text]{width:100%;padding:13px;border:1px solid #d8c5ae;border-radius:9px;font-size:15px;margin-top:10px;background:white;color:#493626}
+.status{margin-top:12px;color:#705034;line-height:1.8}
+input[type=text],input[type=password]{
+ width:100%;padding:13px;border:1px solid #d8c5ae;
+ border-radius:9px;font-size:15px;margin-top:10px;
+ background:white;color:#493626
+}
 .memory-user{color:#806044;font-weight:bold}
 .memory-date{color:#9b8976;font-size:13px}
-#notificationButton{background:#64805b;position:relative}
+#notificationButton{background:#64805b}
 #notificationCount{background:#a64d42;border-radius:50%;padding:3px 7px;margin-right:5px;font-size:12px}
 .notification{border-bottom:1px solid #dfcbb4;padding:12px 0;line-height:1.8}
 .notification.unread{background:#f5eee4;padding:12px;border-radius:8px}
-.notification small{display:block;color:#9b8976}
 .readButton{padding:8px 12px;font-size:13px;margin-top:7px}
+.avatar{
+ width:95px;height:95px;border-radius:50%;object-fit:cover;
+ border:3px solid #dfcbb4;background:#eee4d8;display:block;margin:10px auto
+}
+.avatar-placeholder{
+ width:95px;height:95px;border-radius:50%;background:#dfcbb4;
+ display:flex;align-items:center;justify-content:center;
+ font-size:38px;margin:10px auto
+}
+.settings-form{border-top:1px solid #dfcbb4;padding-top:18px;margin-top:18px}
 </style>
 </head>
 <body>
@@ -43,11 +56,44 @@ input[type=text]{width:100%;padding:13px;border:1px solid #d8c5ae;border-radius:
 
 <section class="card">
 <h2>أهلًا بك في ذكريات بيتنا</h2>
+<div id="avatarArea"></div>
 <div class="account" id="accountInfo">جارٍ تحميل الحساب...</div>
 <div class="buttons">
 <button id="notificationButton" onclick="toggleNotifications()">🔔 الإشعارات <span id="notificationCount">0</span></button>
+<button onclick="toggleSettings()">⚙️ إعدادات الحساب</button>
 <button onclick="logout()">تسجيل الخروج</button>
 </div>
+</section>
+
+<section class="card" id="settingsCard" style="display:none">
+<h2>⚙️ إعدادات الحساب</h2>
+
+<div class="settings-form">
+<h3>🖼️ صورة الحساب</h3>
+<div id="avatarPreviewArea"></div>
+<input type="file" id="avatarInput" accept="image/jpeg,image/png,image/webp,image/gif">
+<button onclick="document.getElementById('avatarInput').click()">اختيار صورة جديدة</button>
+<button onclick="uploadAvatar()">حفظ صورة الحساب</button>
+<div class="status" id="avatarStatus"></div>
+</div>
+
+<div class="settings-form">
+<h3>✏️ تغيير اسم المستخدم</h3>
+<input type="text" id="newUsername" placeholder="اسم المستخدم الجديد">
+<input type="password" id="usernamePassword" placeholder="كلمة المرور الحالية">
+<button onclick="changeUsername()">حفظ اسم المستخدم</button>
+<div class="status" id="usernameStatus"></div>
+</div>
+
+<div class="settings-form">
+<h3>🔐 تغيير كلمة المرور</h3>
+<input type="password" id="currentPassword" placeholder="كلمة المرور الحالية">
+<input type="password" id="newPassword" placeholder="كلمة المرور الجديدة">
+<input type="password" id="confirmPassword" placeholder="تأكيد كلمة المرور الجديدة">
+<button onclick="changePassword()">حفظ كلمة المرور</button>
+<div class="status" id="passwordStatus"></div>
+</div>
+<p class="note">احتفظ ببيانات حسابك في مكان آمن، ولا تشارك كلمة المرور مع أحد.</p>
 </section>
 
 <section class="card" id="notificationsCard" style="display:none">
@@ -101,28 +147,62 @@ input[type=text]{width:100%;padding:13px;border:1px solid #d8c5ae;border-radius:
 let selectedFile=null;
 let previewUrl=null;
 let notificationTimer=null;
+let selectedAvatar=null;
+let avatarPreviewUrl=null;
+
+function showAvatar(url,target){
+ const area=document.getElementById(target);
+ area.replaceChildren();
+ if(url){
+  const img=document.createElement("img");
+  img.className="avatar";
+  img.src=url;
+  img.alt="صورة الحساب";
+  area.appendChild(img);
+ }else{
+  const placeholder=document.createElement("div");
+  placeholder.className="avatar-placeholder";
+  placeholder.textContent="👤";
+  area.appendChild(placeholder);
+ }
+}
 
 async function loadAccount(){
  try{
   const response=await fetch("/api/me");
   const data=await response.json();
   if(!data.authenticated){location.href="/";return;}
+
   document.getElementById("accountInfo").textContent=
    "الحساب: "+data.account.username+" | الرقم: "+data.account.number;
+
+  showAvatar(data.account.avatar_url,"avatarArea");
+  showAvatar(data.account.avatar_url,"avatarPreviewArea");
+
   await loadMemories();
   await loadPublicMemories();
   await loadNotifications();
+
   notificationTimer=setInterval(loadNotifications,30000);
  }catch(error){
   document.getElementById("accountInfo").textContent="تعذر تحميل الحساب.";
  }
 }
 
+function toggleSettings(){
+ const card=document.getElementById("settingsCard");
+ card.style.display=card.style.display==="none"?"block":"none";
+}
+
 function handlePhoto(input){
  const file=input.files[0];
  if(!file)return;
- if(!file.type.startsWith("image/")){alert("اختر صورة فقط.");input.value="";return;}
- if(file.size>5*1024*1024){alert("حجم الصورة يجب ألا يتجاوز 5 ميجابايت.");input.value="";return;}
+ if(!file.type.startsWith("image/")){
+  alert("اختر صورة فقط.");input.value="";return;
+ }
+ if(file.size>5*1024*1024){
+  alert("حجم الصورة يجب ألا يتجاوز 5 ميجابايت.");input.value="";return;
+ }
  if(previewUrl)URL.revokeObjectURL(previewUrl);
  selectedFile=file;
  previewUrl=URL.createObjectURL(file);
@@ -130,8 +210,109 @@ function handlePhoto(input){
  document.getElementById("preview").style.display="block";
  document.getElementById("status").textContent="";
 }
+
 document.getElementById("photoInput").addEventListener("change",function(){handlePhoto(this);});
 document.getElementById("cameraInput").addEventListener("change",function(){handlePhoto(this);});
+
+document.getElementById("avatarInput").addEventListener("change",function(){
+ const file=this.files[0];
+ if(!file)return;
+ if(!file.type.startsWith("image/")){
+  alert("اختر صورة فقط.");this.value="";return;
+ }
+ if(file.size>5*1024*1024){
+  alert("حجم الصورة يجب ألا يتجاوز 5 ميجابايت.");this.value="";return;
+ }
+ if(avatarPreviewUrl)URL.revokeObjectURL(avatarPreviewUrl);
+ selectedAvatar=file;
+ avatarPreviewUrl=URL.createObjectURL(file);
+ showAvatar(avatarPreviewUrl,"avatarPreviewArea");
+ document.getElementById("avatarStatus").textContent="";
+});
+
+async function uploadAvatar(){
+ if(!selectedAvatar){
+  alert("اختر صورة أولًا.");return;
+ }
+ const status=document.getElementById("avatarStatus");
+ status.textContent="جارٍ حفظ الصورة...";
+ try{
+  const formData=new FormData();
+  formData.append("photo",selectedAvatar);
+  const response=await fetch("/api/account/avatar",{method:"POST",body:formData});
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||"تعذر حفظ الصورة.");
+  selectedAvatar=null;
+  document.getElementById("avatarInput").value="";
+  if(avatarPreviewUrl){URL.revokeObjectURL(avatarPreviewUrl);avatarPreviewUrl=null;}
+  status.textContent="تم تحديث صورة الحساب.";
+  await loadAccountInfoOnly();
+ }catch(error){status.textContent=error.message;}
+}
+
+async function loadAccountInfoOnly(){
+ const response=await fetch("/api/me");
+ const data=await response.json();
+ if(data.authenticated){
+  document.getElementById("accountInfo").textContent=
+   "الحساب: "+data.account.username+" | الرقم: "+data.account.number;
+  showAvatar(data.account.avatar_url,"avatarArea");
+  showAvatar(data.account.avatar_url,"avatarPreviewArea");
+ }
+}
+
+async function changeUsername(){
+ const username=document.getElementById("newUsername").value.trim();
+ const password=document.getElementById("usernamePassword").value;
+ const status=document.getElementById("usernameStatus");
+ if(!username||!password){status.textContent="اكتب الاسم وكلمة المرور الحالية.";return;}
+ status.textContent="جارٍ تحديث الاسم...";
+ try{
+  const response=await fetch("/api/account/username",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({username,password})
+  });
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||"تعذر تغيير الاسم.");
+  document.getElementById("newUsername").value="";
+  document.getElementById("usernamePassword").value="";
+  status.textContent="تم تغيير اسم المستخدم بنجاح.";
+  await loadAccountInfoOnly();
+ }catch(error){status.textContent=error.message;}
+}
+
+async function changePassword(){
+ const currentPassword=document.getElementById("currentPassword").value;
+ const newPassword=document.getElementById("newPassword").value;
+ const confirmPassword=document.getElementById("confirmPassword").value;
+ const status=document.getElementById("passwordStatus");
+
+ if(!currentPassword||!newPassword||!confirmPassword){
+  status.textContent="أكمل جميع الحقول.";return;
+ }
+ if(newPassword!==confirmPassword){
+  status.textContent="كلمتا المرور غير متطابقتين.";return;
+ }
+ if(newPassword.length<8){
+  status.textContent="كلمة المرور يجب أن تكون 8 أحرف على الأقل.";return;
+ }
+
+ status.textContent="جارٍ تحديث كلمة المرور...";
+ try{
+  const response=await fetch("/api/account/password",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({currentPassword,newPassword})
+  });
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||"تعذر تغيير كلمة المرور.");
+  document.getElementById("currentPassword").value="";
+  document.getElementById("newPassword").value="";
+  document.getElementById("confirmPassword").value="";
+  status.textContent="تم تغيير كلمة المرور بنجاح.";
+ }catch(error){status.textContent=error.message;}
+}
 
 function cancelPhoto(){
  selectedFile=null;
@@ -219,7 +400,10 @@ async function loadPublicMemories(){
  }catch(error){gallery.textContent="تعذر تحميل الذكريات: "+error.message;}
 }
 
-function clearSearch(){document.getElementById("publicSearch").value="";loadPublicMemories();}
+function clearSearch(){
+ document.getElementById("publicSearch").value="";
+ loadPublicMemories();
+}
 
 async function deleteMemory(id){
  if(!confirm("هل تريد حذف هذه الصورة؟"))return;
@@ -236,8 +420,7 @@ async function loadNotifications(){
   const response=await fetch("/api/notifications");
   const data=await response.json();
   if(!response.ok)throw new Error(data.error||"تعذر تحميل الإشعارات.");
-  const count=Number(data.unread_count||0);
-  document.getElementById("notificationCount").textContent=count;
+  document.getElementById("notificationCount").textContent=Number(data.unread_count||0);
   renderNotifications(data.notifications||[]);
  }catch(error){
   document.getElementById("notificationsList").textContent="تعذر تحميل الإشعارات.";
