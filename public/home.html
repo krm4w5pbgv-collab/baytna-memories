@@ -5,6 +5,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ذكريات بيتنا</title>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#f5eee4;color:#493626}
@@ -26,11 +29,12 @@ input[type=file]{display:none}
 .memory{border:1px solid #dfcbb4;border-radius:12px;padding:12px;margin-top:15px;background:#fffdf9}
 .memory p{white-space:pre-wrap;line-height:1.7}
 .status{margin-top:12px;color:#705034;line-height:1.8}
-input[type=text],input[type=password]{
+input[type=text],input[type=password],input[type=url]{
  width:100%;padding:13px;border:1px solid #d8c5ae;
  border-radius:9px;font-size:15px;margin-top:10px;
  background:white;color:#493626
 }
+input[type=color]{width:100%;height:48px;margin-top:10px}
 .memory-user{color:#806044;font-weight:bold}
 .memory-date{color:#9b8976;font-size:13px}
 #notificationButton{background:#64805b}
@@ -41,10 +45,13 @@ input[type=text],input[type=password]{
 .avatar{width:95px;height:95px;border-radius:50%;object-fit:cover;border:3px solid #dfcbb4;background:#eee4d8;display:block;margin:10px auto}
 .avatar-placeholder{width:95px;height:95px;border-radius:50%;background:#dfcbb4;display:flex;align-items:center;justify-content:center;font-size:38px;margin:10px auto}
 .settings-form{border-top:1px solid #dfcbb4;padding-top:18px;margin-top:18px}
+#qr-reader{width:100%;margin-top:15px}
+.account-row{padding:12px;border-bottom:1px solid #dfcbb4;line-height:1.8}
 </style>
 </head>
+
 <body>
-<header>🏠 ذكريات بيتنا</header>
+<header id="siteHeader">🏠 ذكريات بيتنا</header>
 <main>
 
 <section class="card">
@@ -54,14 +61,14 @@ input[type=text],input[type=password]{
 <div class="buttons">
 <button id="notificationButton" onclick="toggleNotifications()">🔔 الإشعارات <span id="notificationCount">0</span></button>
 <button onclick="toggleSettings()">🔒 إعدادات الحساب</button>
+<button id="ownerButton" style="display:none" onclick="openOwner()">👑 إعدادات الأونر</button>
 <button onclick="logout()">تسجيل الخروج</button>
 </div>
 </section>
 
-<!-- إنشاء كلمة مرور الإعدادات -->
 <section class="card" id="settingsSetupCard" style="display:none">
 <h2>🔐 إنشاء كلمة مرور الإعدادات</h2>
-<p>أنشئ كلمة مرور مستقلة عن كلمة مرور تسجيل الدخول. ستحتاج إليها لفتح إعدادات الحساب.</p>
+<p>أنشئ كلمة مرور مستقلة عن كلمة مرور تسجيل الدخول.</p>
 <input type="password" id="newSettingsPassword" placeholder="كلمة مرور الإعدادات الجديدة" autocomplete="new-password">
 <input type="password" id="confirmSettingsPassword" placeholder="تأكيد كلمة مرور الإعدادات" autocomplete="new-password">
 <div class="buttons">
@@ -71,7 +78,6 @@ input[type=text],input[type=password]{
 <div class="status" id="settingsSetupStatus"></div>
 </section>
 
-<!-- فتح إعدادات الحساب -->
 <section class="card" id="settingsLockCard" style="display:none">
 <h2>🔒 تأكيد الهوية</h2>
 <p>أدخل كلمة مرور الإعدادات المستقلة.</p>
@@ -115,6 +121,55 @@ input[type=text],input[type=password]{
 <div class="status" id="passwordStatus"></div>
 </div>
 <p class="note">احتفظ ببيانات حسابك في مكان آمن، ولا تشارك كلمة المرور مع أحد.</p>
+</section>
+
+<!-- إعدادات الأونر -->
+<section class="card" id="ownerLockCard" style="display:none">
+<h2>👑 دخول الأونر</h2>
+<p>امسح رمز QR الخاص بالأونر لفتح لوحة التحكم.</p>
+
+<div class="buttons">
+<button onclick="startQrCamera()">📷 فتح الكاميرا</button>
+<button onclick="document.getElementById('ownerQrFile').click()">🖼️ اختيار صورة QR</button>
+</div>
+
+<input type="file" id="ownerQrFile" accept="image/*">
+<div id="qr-reader"></div>
+<div class="status" id="ownerQrStatus"></div>
+<div class="buttons">
+<button class="delete" onclick="closeOwner()">إلغاء</button>
+</div>
+</section>
+
+<section class="card" id="ownerCard" style="display:none">
+<h2>👑 لوحة تحكم الأونر</h2>
+<p>إدارة موقع ذكريات بيتنا.</p>
+
+<div class="buttons">
+<button class="delete" onclick="lockOwner()">🔒 قفل لوحة الأونر</button>
+</div>
+
+<div class="settings-form">
+<h3>🏠 اسم الموقع</h3>
+<input type="text" id="ownerSiteName" placeholder="اسم الموقع">
+
+<h3>🖼️ رابط شعار الموقع</h3>
+<input type="url" id="ownerLogo" placeholder="https://example.com/logo.png">
+
+<h3>🎨 لون الموقع</h3>
+<input type="color" id="ownerThemeColor" value="#8b684b">
+
+<div class="buttons">
+<button onclick="saveOwnerSettings()">💾 حفظ إعدادات الموقع</button>
+</div>
+<div class="status" id="ownerSettingsStatus"></div>
+</div>
+
+<div class="settings-form">
+<h3>👥 إدارة الحسابات</h3>
+<button onclick="loadOwnerAccounts()">تحديث قائمة الحسابات</button>
+<div id="ownerAccounts"><div class="empty">اضغط تحديث لعرض الحسابات.</div></div>
+</div>
 </section>
 
 <section class="card" id="notificationsCard" style="display:none">
@@ -170,6 +225,8 @@ let previewUrl=null;
 let notificationTimer=null;
 let selectedAvatar=null;
 let avatarPreviewUrl=null;
+let qrScanner=null;
+let ownerIsUnlocked=false;
 
 function showAvatar(url,target){
  const area=document.getElementById(target);
@@ -204,6 +261,10 @@ async function loadAccount(){
   showAvatar(data.account.avatar_url,"avatarArea");
   showAvatar(data.account.avatar_url,"avatarPreviewArea");
 
+  const ownerData=await apiJson("/api/owner/status");
+  document.getElementById("ownerButton").style.display=
+   ownerData.isOwner?"inline-block":"none";
+
   await loadMemories();
   await loadPublicMemories();
   await loadNotifications();
@@ -214,15 +275,13 @@ async function loadAccount(){
  }
 }
 
+// إعدادات الحساب
 async function toggleSettings(){
  const settings=document.getElementById("settingsCard");
  if(settings.style.display==="block"){
-  lockSettings();
-  return;
+  lockSettings();return;
  }
-
- closeSettingsLock();
- closeSettingsSetup();
+ closeSettingsLock();closeSettingsSetup();
 
  try{
   const data=await apiJson("/api/account/settings-status");
@@ -234,9 +293,7 @@ async function toggleSettings(){
    document.getElementById("settingsSetupCard").style.display="block";
    document.getElementById("settingsSetupStatus").textContent="";
   }
- }catch(error){
-  alert(error.message);
- }
+ }catch(error){alert(error.message);}
 }
 
 async function createSettingsPassword(){
@@ -244,30 +301,20 @@ async function createSettingsPassword(){
  const confirmPassword=document.getElementById("confirmSettingsPassword").value;
  const status=document.getElementById("settingsSetupStatus");
 
- if(password.length<8){
-  status.textContent="كلمة المرور يجب أن تكون 8 أحرف على الأقل.";
-  return;
- }
- if(password!==confirmPassword){
-  status.textContent="كلمتا المرور غير متطابقتين.";
-  return;
- }
+ if(password.length<8){status.textContent="كلمة المرور يجب أن تكون 8 أحرف على الأقل.";return;}
+ if(password!==confirmPassword){status.textContent="كلمتا المرور غير متطابقتين.";return;}
 
  status.textContent="جارٍ إنشاء كلمة المرور...";
  try{
   await apiJson("/api/account/settings-password",{
-   method:"POST",
-   headers:{"Content-Type":"application/json"},
+   method:"POST",headers:{"Content-Type":"application/json"},
    body:JSON.stringify({password,confirmPassword})
   });
-
   document.getElementById("newSettingsPassword").value="";
   document.getElementById("confirmSettingsPassword").value="";
   document.getElementById("settingsSetupCard").style.display="none";
   document.getElementById("settingsCard").style.display="block";
- }catch(error){
-  status.textContent=error.message;
- }
+ }catch(error){status.textContent=error.message;}
 }
 
 function closeSettingsSetup(){
@@ -280,24 +327,18 @@ function closeSettingsSetup(){
 async function unlockSettings(){
  const password=document.getElementById("settingsUnlockPassword").value;
  const status=document.getElementById("settingsLockStatus");
-
  if(!password){status.textContent="اكتب كلمة مرور الإعدادات.";return;}
  status.textContent="جارٍ التحقق...";
-
  try{
   await apiJson("/api/account/settings-unlock",{
-   method:"POST",
-   headers:{"Content-Type":"application/json"},
+   method:"POST",headers:{"Content-Type":"application/json"},
    body:JSON.stringify({password})
   });
-
   document.getElementById("settingsLockCard").style.display="none";
   document.getElementById("settingsCard").style.display="block";
   document.getElementById("settingsUnlockPassword").value="";
   status.textContent="";
- }catch(error){
-  status.textContent=error.message;
- }
+ }catch(error){status.textContent=error.message;}
 }
 
 function closeSettingsLock(){
@@ -308,10 +349,184 @@ function closeSettingsLock(){
 
 function lockSettings(){
  document.getElementById("settingsCard").style.display="none";
- closeSettingsLock();
- closeSettingsSetup();
+ closeSettingsLock();closeSettingsSetup();
 }
 
+// إعدادات الأونر
+async function openOwner(){
+ document.getElementById("ownerLockCard").style.display="block";
+ document.getElementById("ownerQrStatus").textContent="";
+ document.getElementById("ownerCard").style.display="none";
+}
+
+function closeOwner(){
+ stopQrCamera();
+ document.getElementById("ownerLockCard").style.display="none";
+ document.getElementById("ownerCard").style.display="none";
+}
+
+async function startQrCamera(){
+ const status=document.getElementById("ownerQrStatus");
+ if(typeof Html5Qrcode==="undefined"){
+  status.textContent="تعذر تحميل ماسح QR. تحقق من اتصال الإنترنت.";
+  return;
+ }
+
+ try{
+  if(!qrScanner)qrScanner=new Html5Qrcode("qr-reader");
+  status.textContent="جارٍ تشغيل الكاميرا...";
+  await qrScanner.start(
+   {facingMode:"environment"},
+   {fps:10,qrbox:{width:240,height:240}},
+   async decodedText=>{await verifyOwnerQr(decodedText);},
+   ()=>{}
+  );
+  status.textContent="وجّه الكاميرا نحو رمز QR.";
+ }catch(error){
+  status.textContent="تعذر تشغيل الكاميرا. اسمح للموقع باستخدام الكاميرا أو اختر صورة QR.";
+ }
+}
+
+async function stopQrCamera(){
+ if(qrScanner){
+  try{
+   if(qrScanner.isScanning)await qrScanner.stop();
+   qrScanner.clear();
+  }catch(error){}
+  qrScanner=null;
+ }
+}
+
+async function verifyOwnerQr(payload){
+ const status=document.getElementById("ownerQrStatus");
+ status.textContent="جارٍ التحقق من الرمز...";
+ await stopQrCamera();
+
+ try{
+  await apiJson("/api/owner/qr-unlock",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({payload})
+  });
+
+  ownerIsUnlocked=true;
+  document.getElementById("ownerLockCard").style.display="none";
+  document.getElementById("ownerCard").style.display="block";
+  status.textContent="";
+  await loadOwnerSettings();
+  await loadOwnerAccounts();
+ }catch(error){
+  status.textContent=error.message;
+ }
+}
+
+document.getElementById("ownerQrFile").addEventListener("change",async function(){
+ const file=this.files[0];
+ if(!file)return;
+
+ const status=document.getElementById("ownerQrStatus");
+ if(typeof Html5Qrcode==="undefined"){
+  status.textContent="تعذر تحميل ماسح QR.";
+  return;
+ }
+
+ try{
+  const scanner=new Html5Qrcode("qr-reader");
+  status.textContent="جارٍ قراءة صورة QR...";
+  const decoded=await scanner.scanFile(file,true);
+  await verifyOwnerQr(decoded);
+ }catch(error){
+  status.textContent="لم يتم العثور على رمز QR صالح في الصورة.";
+ }
+ this.value="";
+});
+
+async function lockOwner(){
+ try{
+  await apiJson("/api/owner/lock",{method:"POST"});
+  ownerIsUnlocked=false;
+  closeOwner();
+ }catch(error){alert(error.message);}
+}
+
+async function loadOwnerSettings(){
+ try{
+  const data=await apiJson("/api/owner/site-settings");
+  const s=data.settings;
+  document.getElementById("ownerSiteName").value=s.site_name||"";
+  document.getElementById("ownerLogo").value=s.logo||"";
+  document.getElementById("ownerThemeColor").value=s.theme_color||"#8b684b";
+ }catch(error){
+  document.getElementById("ownerSettingsStatus").textContent=error.message;
+ }
+}
+
+async function saveOwnerSettings(){
+ const status=document.getElementById("ownerSettingsStatus");
+ const site_name=document.getElementById("ownerSiteName").value.trim();
+ const logo=document.getElementById("ownerLogo").value.trim();
+ const theme_color=document.getElementById("ownerThemeColor").value;
+
+ status.textContent="جارٍ حفظ الإعدادات...";
+ try{
+  const data=await apiJson("/api/owner/site-settings",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({site_name,logo,theme_color})
+  });
+  status.textContent="تم حفظ إعدادات الموقع.";
+  applySiteSettings(data.settings);
+ }catch(error){status.textContent=error.message;}
+}
+
+function applySiteSettings(settings){
+ if(!settings)return;
+ document.title=settings.site_name;
+ const header=document.getElementById("siteHeader");
+ header.textContent=settings.logo?"": "🏠 "+settings.site_name;
+ header.style.background=settings.theme_color||"#806044";
+
+ if(settings.logo){
+  const img=document.createElement("img");
+  img.src=settings.logo;
+  img.alt="شعار الموقع";
+  img.style.maxWidth="75px";
+  img.style.maxHeight="65px";
+  img.style.objectFit="contain";
+  img.style.display="block";
+  img.style.margin="0 auto 8px";
+  header.replaceChildren(img,document.createTextNode(settings.site_name));
+ }
+}
+
+async function loadOwnerAccounts(){
+ const area=document.getElementById("ownerAccounts");
+ area.textContent="جارٍ تحميل الحسابات...";
+ try{
+  const data=await apiJson("/api/owner/accounts");
+  area.replaceChildren();
+  data.accounts.forEach(account=>{
+   const row=document.createElement("div");
+   row.className="account-row";
+   row.textContent="الحساب رقم "+account.number+" — "+account.username+
+    (account.hasAvatar?" — لديه صورة حساب":" — دون صورة حساب");
+   area.appendChild(row);
+  });
+ }catch(error){area.textContent=error.message;}
+}
+
+// تحميل إعدادات الموقع العامة
+async function loadPublicSiteSettings(){
+ try{
+  const response=await fetch("/api/owner/site-settings");
+  if(response.ok){
+   const data=await response.json();
+   applySiteSettings(data.settings);
+  }
+ }catch(error){}
+}
+
+// الصور والحساب
 function handlePhoto(input){
  const file=input.files[0];
  if(!file)return;
@@ -335,12 +550,8 @@ document.getElementById("cameraInput").addEventListener("change",function(){hand
 document.getElementById("avatarInput").addEventListener("change",function(){
  const file=this.files[0];
  if(!file)return;
- if(!file.type.startsWith("image/")){
-  alert("اختر صورة فقط.");this.value="";return;
- }
- if(file.size>5*1024*1024){
-  alert("حجم الصورة يجب ألا يتجاوز 5 ميجابايت.");this.value="";return;
- }
+ if(!file.type.startsWith("image/")){alert("اختر صورة فقط.");this.value="";return;}
+ if(file.size>5*1024*1024){alert("حجم الصورة يجب ألا يتجاوز 5 ميجابايت.");this.value="";return;}
  if(avatarPreviewUrl)URL.revokeObjectURL(avatarPreviewUrl);
  selectedAvatar=file;
  avatarPreviewUrl=URL.createObjectURL(file);
@@ -355,7 +566,7 @@ async function uploadAvatar(){
  try{
   const formData=new FormData();
   formData.append("photo",selectedAvatar);
-  const data=await apiJson("/api/account/avatar",{method:"POST",body:formData});
+  await apiJson("/api/account/avatar",{method:"POST",body:formData});
   selectedAvatar=null;
   document.getElementById("avatarInput").value="";
   if(avatarPreviewUrl){URL.revokeObjectURL(avatarPreviewUrl);avatarPreviewUrl=null;}
@@ -398,15 +609,9 @@ async function changePassword(){
  const confirmPassword=document.getElementById("confirmPassword").value;
  const status=document.getElementById("passwordStatus");
 
- if(!currentPassword||!newPassword||!confirmPassword){
-  status.textContent="أكمل جميع الحقول.";return;
- }
- if(newPassword!==confirmPassword){
-  status.textContent="كلمتا المرور غير متطابقتين.";return;
- }
- if(newPassword.length<8){
-  status.textContent="كلمة المرور يجب أن تكون 8 أحرف على الأقل.";return;
- }
+ if(!currentPassword||!newPassword||!confirmPassword){status.textContent="أكمل جميع الحقول.";return;}
+ if(newPassword!==confirmPassword){status.textContent="كلمتا المرور غير متطابقتين.";return;}
+ if(newPassword.length<8){status.textContent="كلمة المرور يجب أن تكون 8 أحرف على الأقل.";return;}
 
  status.textContent="جارٍ تحديث كلمة المرور...";
  try{
@@ -436,14 +641,9 @@ async function savePhoto(){
  const status=document.getElementById("status");
  button.disabled=true;status.textContent="جارٍ حفظ الصورة...";
  try{
-  await apiJson("/api/memories/private",{
-   method:"POST",
-   body:(()=>{
-    const formData=new FormData();
-    formData.append("photo",selectedFile);
-    return formData;
-   })()
-  });
+  const formData=new FormData();
+  formData.append("photo",selectedFile);
+  await apiJson("/api/memories/private",{method:"POST",body:formData});
   cancelPhoto();status.textContent="تم حفظ الصورة بنجاح.";
   await loadMemories();
  }catch(error){status.textContent=error.message;}
@@ -517,6 +717,7 @@ async function deleteMemory(id){
  }catch(error){alert(error.message);}
 }
 
+// الإشعارات
 async function loadNotifications(){
  try{
   const data=await apiJson("/api/notifications");
@@ -575,7 +776,7 @@ async function readAllNotifications(){
 
 async function logout(){
  if(notificationTimer)clearInterval(notificationTimer);
- await fetch("/api/logout",{method:"POST"});
+ try{await fetch("/api/logout",{method:"POST"});}catch(error){}
  location.href="/";
 }
 
@@ -590,6 +791,7 @@ document.getElementById("confirmSettingsPassword").addEventListener("keydown",fu
 });
 
 loadAccount();
+loadPublicSiteSettings();
 </script>
 </body>
 </html>
