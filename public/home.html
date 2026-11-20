@@ -2,267 +2,239 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ذكريات بيتنا</title>
-
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f5eee4;
-      color: #493626;
-    }
-
-    header {
-      background: #806044;
-      color: white;
-      padding: 22px;
-      text-align: center;
-      font-size: 25px;
-    }
-
-    main {
-      max-width: 700px;
-      margin: 25px auto;
-      padding: 15px;
-    }
-
-    .card {
-      background: #fffaf3;
-      border: 1px solid #dfcbb4;
-      border-radius: 16px;
-      padding: 22px;
-      margin-bottom: 20px;
-      box-shadow: 0 5px 20px #0000000d;
-    }
-
-    h2 {
-      margin-top: 0;
-      color: #705034;
-    }
-
-    .account {
-      color: #8b684b;
-      margin-bottom: 15px;
-    }
-
-    .buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 15px;
-    }
-
-    button {
-      border: 0;
-      background: #806044;
-      color: white;
-      padding: 13px 18px;
-      border-radius: 9px;
-      font-size: 15px;
-      cursor: pointer;
-    }
-
-    button:active {
-      transform: scale(.98);
-    }
-
-    .delete {
-      background: #a64d42;
-    }
-
-    .public {
-      background: #647b54;
-    }
-
-    .preview {
-      display: none;
-      margin-top: 20px;
-    }
-
-    .preview img {
-      width: 100%;
-      max-height: 400px;
-      object-fit: contain;
-      border-radius: 12px;
-      background: #eee4d8;
-    }
-
-    .empty {
-      text-align: center;
-      color: #9b8976;
-      padding: 30px 10px;
-      border: 2px dashed #d8c5ae;
-      border-radius: 12px;
-    }
-
-    input[type="file"] {
-      display: none;
-    }
-
-    .note {
-      color: #8b684b;
-      font-size: 13px;
-      line-height: 1.8;
-      margin-top: 15px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ذكريات بيتنا</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f5eee4;color:#493626}
+header{background:#806044;color:white;padding:22px;text-align:center;font-size:25px}
+main{max-width:700px;margin:25px auto;padding:15px}
+.card{background:#fffaf3;border:1px solid #dfcbb4;border-radius:16px;padding:22px;margin-bottom:20px;box-shadow:0 5px 20px #0000000d}
+h2{margin-top:0;color:#705034}
+.account{color:#8b684b;margin-bottom:15px}
+.buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px}
+button{border:0;background:#806044;color:white;padding:13px 18px;border-radius:9px;font-size:15px;cursor:pointer}
+button:disabled{opacity:.5}
+.delete{background:#a64d42}
+.preview{display:none;margin-top:20px}
+.preview img,.memory img{width:100%;max-height:400px;object-fit:contain;border-radius:12px;background:#eee4d8}
+.empty{text-align:center;color:#9b8976;padding:30px 10px;border:2px dashed #d8c5ae;border-radius:12px}
+input[type=file]{display:none}
+.note{color:#8b684b;font-size:13px;line-height:1.8;margin-top:15px}
+.memory{border:1px solid #dfcbb4;border-radius:12px;padding:12px;margin-top:15px}
+.memory p{white-space:pre-wrap}
+.status{margin-top:12px;color:#705034}
+</style>
 </head>
-
 <body>
-
 <header>🏠 ذكريات بيتنا</header>
-
 <main>
 
-  <section class="card">
-    <h2>أهلًا بك في ذكريات بيتنا</h2>
-    <div class="account" id="accountInfo">
-      جارٍ تحميل الحساب...
-    </div>
-    <button onclick="logout()">تسجيل الخروج</button>
-  </section>
+<section class="card">
+<h2>أهلًا بك في ذكريات بيتنا</h2>
+<div class="account" id="accountInfo">جارٍ تحميل الحساب...</div>
+<button onclick="logout()">تسجيل الخروج</button>
+</section>
 
-  <section class="card">
-    <h2>📷 ألبومي الخاص</h2>
+<section class="card">
+<h2>📷 ألبومي الخاص</h2>
 
-    <div class="empty" id="emptyMessage">
-      لم تختر أي صورة حتى الآن
-    </div>
+<div class="empty" id="emptyMessage">لا توجد صور محفوظة حتى الآن</div>
 
-    <div class="buttons">
-      <button onclick="document.getElementById('photoInput').click()">
-        🖼️ اختيار صورة
-      </button>
+<div class="buttons">
+<button onclick="document.getElementById('photoInput').click()">🖼️ اختيار صورة</button>
+<button onclick="document.getElementById('cameraInput').click()">📸 تصوير بالكاميرا</button>
+</div>
 
-      <button onclick="document.getElementById('cameraInput').click()">
-        📸 تصوير بالكاميرا
-      </button>
-    </div>
+<input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif">
+<input type="file" id="cameraInput" accept="image/*" capture="environment">
 
-    <input
-      type="file"
-      id="photoInput"
-      accept="image/*"
-      onchange="showPhoto(this)"
-    >
+<div class="preview" id="preview">
+<img id="previewImage" alt="معاينة الصورة">
+<div class="buttons">
+<button id="saveButton" onclick="savePhoto()">حفظ الصورة</button>
+<button class="delete" onclick="cancelPhoto()">إلغاء</button>
+</div>
+</div>
 
-    <input
-      type="file"
-      id="cameraInput"
-      accept="image/*"
-      capture="environment"
-      onchange="showPhoto(this)"
-    >
+<div class="status" id="status"></div>
+<p class="note">الصور التي تحفظها هنا تظهر في ألبوم حسابك الخاص.</p>
+</section>
 
-    <div class="preview" id="preview">
-      <img id="previewImage" alt="الصورة المحددة">
-
-      <div class="buttons">
-        <button class="delete" onclick="deletePhoto()">
-          🗑️ حذف الصورة
-        </button>
-
-        <button class="public" onclick="sendPublic()">
-          إرسال إلى الذكريات العامة
-        </button>
-      </div>
-    </div>
-
-    <p class="note">
-      ملاحظة: هذه معاينة مؤقتة للصورة على جهازك.
-      لم يتم تفعيل حفظ الصور أو نشرها على الموقع بعد.
-    </p>
-  </section>
+<section class="card">
+<h2>🖼️ صوري المحفوظة</h2>
+<div id="gallery"></div>
+</section>
 
 </main>
 
 <script>
-let selectedPhotoUrl = null;
+let selectedFile = null;
+let previewUrl = null;
 
-async function loadAccount() {
-  try {
-    const response = await fetch("/api/me");
-    const data = await response.json();
+async function loadAccount(){
+try{
+const response = await fetch("/api/me");
+const data = await response.json();
 
-    if (!data.authenticated) {
-      location.href = "/";
-      return;
-    }
-
-    document.getElementById("accountInfo").textContent =
-      "الحساب: " + data.account.username +
-      " | الرقم: " + data.account.number;
-
-  } catch (error) {
-    document.getElementById("accountInfo").textContent =
-      "تعذر تحميل الحساب.";
-  }
+if(!data.authenticated){
+location.href="/";
+return;
 }
 
-function showPhoto(input) {
-  const file = input.files[0];
+document.getElementById("accountInfo").textContent =
+"الحساب: "+data.account.username+" | الرقم: "+data.account.number;
 
-  if (!file) return;
-
-  if (!file.type.startsWith("image/")) {
-    alert("اختر ملف صورة فقط.");
-    input.value = "";
-    return;
-  }
-
-  if (file.size > 5 * 1024 * 1024) {
-    alert("حجم الصورة يجب ألا يتجاوز 5 ميجابايت.");
-    input.value = "";
-    return;
-  }
-
-  if (selectedPhotoUrl) {
-    URL.revokeObjectURL(selectedPhotoUrl);
-  }
-
-  selectedPhotoUrl = URL.createObjectURL(file);
-
-  document.getElementById("previewImage").src =
-    selectedPhotoUrl;
-
-  document.getElementById("preview").style.display = "block";
-  document.getElementById("emptyMessage").style.display = "none";
+await loadMemories();
+}catch(error){
+document.getElementById("accountInfo").textContent="تعذر تحميل الحساب.";
+}
 }
 
-function deletePhoto() {
-  if (selectedPhotoUrl) {
-    URL.revokeObjectURL(selectedPhotoUrl);
-    selectedPhotoUrl = null;
-  }
+function handlePhoto(input){
+const file=input.files[0];
+if(!file)return;
 
-  document.getElementById("previewImage").src = "";
-  document.getElementById("preview").style.display = "none";
-  document.getElementById("emptyMessage").style.display = "block";
-
-  document.getElementById("photoInput").value = "";
-  document.getElementById("cameraInput").value = "";
+if(!file.type.startsWith("image/")){
+alert("اختر صورة فقط.");
+input.value="";
+return;
 }
 
-function sendPublic() {
-  alert("نشر الذكريات العامة سيتم تفعيله في الخطوة القادمة.");
+if(file.size>5*1024*1024){
+alert("حجم الصورة يجب ألا يتجاوز 5 ميجابايت.");
+input.value="";
+return;
 }
 
-async function logout() {
-  await fetch("/api/logout", {
-    method: "POST"
-  });
+if(previewUrl)URL.revokeObjectURL(previewUrl);
 
-  location.href = "/";
+selectedFile=file;
+previewUrl=URL.createObjectURL(file);
+
+document.getElementById("previewImage").src=previewUrl;
+document.getElementById("preview").style.display="block";
+document.getElementById("status").textContent="";
+}
+
+document.getElementById("photoInput").addEventListener("change",function(){
+handlePhoto(this);
+});
+
+document.getElementById("cameraInput").addEventListener("change",function(){
+handlePhoto(this);
+});
+
+function cancelPhoto(){
+selectedFile=null;
+
+if(previewUrl){
+URL.revokeObjectURL(previewUrl);
+previewUrl=null;
+}
+
+document.getElementById("previewImage").src="";
+document.getElementById("preview").style.display="none";
+document.getElementById("photoInput").value="";
+document.getElementById("cameraInput").value="";
+}
+
+async function savePhoto(){
+if(!selectedFile)return;
+
+const button=document.getElementById("saveButton");
+const status=document.getElementById("status");
+
+button.disabled=true;
+status.textContent="جارٍ حفظ الصورة...";
+
+try{
+const formData=new FormData();
+formData.append("photo",selectedFile);
+
+const response=await fetch("/api/memories/private",{
+method:"POST",
+body:formData
+});
+
+const data=await response.json();
+
+if(!response.ok)throw new Error(data.error||"تعذر حفظ الصورة.");
+
+cancelPhoto();
+status.textContent="تم حفظ الصورة بنجاح.";
+await loadMemories();
+
+}catch(error){
+status.textContent=error.message;
+}finally{
+button.disabled=false;
+}
+}
+
+async function loadMemories(){
+const gallery=document.getElementById("gallery");
+const empty=document.getElementById("emptyMessage");
+
+try{
+const response=await fetch("/api/memories/private");
+const data=await response.json();
+
+if(!response.ok)throw new Error(data.error);
+
+gallery.replaceChildren();
+empty.style.display=data.memories.length?"none":"block";
+
+data.memories.forEach(memory=>{
+const card=document.createElement("div");
+card.className="memory";
+
+const img=document.createElement("img");
+img.src=memory.image_url;
+img.alt="صورة محفوظة";
+img.loading="lazy";
+
+const date=document.createElement("p");
+date.textContent=new Date(memory.created_at).toLocaleString("ar-SA");
+
+const del=document.createElement("button");
+del.className="delete";
+del.textContent="🗑️ حذف الصورة";
+del.onclick=()=>deleteMemory(memory.id);
+
+card.append(img,date,del);
+gallery.appendChild(card);
+});
+
+}catch(error){
+gallery.textContent="تعذر تحميل الصور: "+error.message;
+}
+}
+
+async function deleteMemory(id){
+if(!confirm("هل تريد حذف هذه الصورة؟"))return;
+
+try{
+const response=await fetch("/api/memories/"+encodeURIComponent(id),{
+method:"DELETE"
+});
+
+const data=await response.json();
+if(!response.ok)throw new Error(data.error);
+
+await loadMemories();
+}catch(error){
+alert(error.message);
+}
+}
+
+async function logout(){
+await fetch("/api/logout",{method:"POST"});
+location.href="/";
 }
 
 loadAccount();
 </script>
-
 </body>
 </html>
