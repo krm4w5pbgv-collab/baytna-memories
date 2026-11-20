@@ -85,6 +85,19 @@ function requireLogin(req, res, next) {
   next();
 }
 
+function requireSettingsUnlocked(req, res, next) {
+  const unlockedAt = Number(req.session.settingsUnlockedAt || 0);
+
+  if (!unlockedAt || Date.now() - unlockedAt > 10 * 60 * 1000) {
+    delete req.session.settingsUnlockedAt;
+    return res.status(403).json({
+      error: "افتح إعدادات الحساب بكلمة المرور أولًا."
+    });
+  }
+
+  next();
+}
+
 function extensionFor(mime) {
   return {
     "image/jpeg": "jpg",
@@ -248,94 +261,148 @@ app.get("/api/me", async (req, res, next) => {
   }
 });
 
-// تغيير اسم المستخدم
-app.post("/api/account/username", requireLogin, async (req, res, next) => {
+// فتح إعدادات الحساب بعد التحقق من كلمة المرور
+app.post("/api/account/settings-unlock", requireLogin, async (req, res, next) => {
   try {
-    const username = String(req.body.username || "").trim();
     const password = String(req.body.password || "");
 
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username))
-      return res.status(400).json({
-        error: "اسم المستخدم يجب أن يكون من 3 إلى 20 حرفًا أو رقمًا أو _."
-      });
-
     if (!password)
-      return res.status(400).json({ error: "اكتب كلمة المرور الحالية." });
-
-    const accountNumber = req.session.account.number;
-
-    const current = await pool.query(
-      "SELECT password_hash FROM accounts WHERE number = $1",
-      [accountNumber]
-    );
-
-    if (!current.rows.length ||
-        !(await bcrypt.compare(password, current.rows[0].password_hash)))
-      return res.status(401).json({ error: "كلمة المرور غير صحيحة." });
-
-    const updated = await pool.query(
-      `UPDATE accounts SET username = $1
-       WHERE number = $2
-       RETURNING number, username`,
-      [username, accountNumber]
-    );
-
-    req.session.account.username = updated.rows[0].username;
-
-    res.json({ success: true, account: updated.rows[0] });
-  } catch (error) {
-    if (error.code === "23505")
-      return res.status(409).json({ error: "اسم المستخدم مستخدم بالفعل." });
-    next(error);
-  }
-});
-
-// تغيير كلمة المرور
-app.post("/api/account/password", requireLogin, async (req, res, next) => {
-  try {
-    const currentPassword = String(req.body.currentPassword || "");
-    const newPassword = String(req.body.newPassword || "");
-
-    if (newPassword.length < 8 || newPassword.length > 100)
       return res.status(400).json({
-        error: "كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل."
+        error: "اكتب كلمة المرور الحالية."
       });
-
-    const accountNumber = req.session.account.number;
 
     const result = await pool.query(
       "SELECT password_hash FROM accounts WHERE number = $1",
-      [accountNumber]
+      [req.session.account.number]
     );
 
     if (!result.rows.length ||
-        !(await bcrypt.compare(currentPassword, result.rows[0].password_hash)))
-      return res.status(401).json({ error: "كلمة المرور الحالية غير صحيحة." });
+        !(await bcrypt.compare(password, result.rows[0].password_hash))) {
+      return res.status(401).json({
+        error: "كلمة المرور غير صحيحة."
+      });
+    }
 
-    const hash = await bcrypt.hash(newPassword, 12);
+    req.session.settingsUnlockedAt = Date.now();
 
-    await pool.query(
-      "UPDATE accounts SET password_hash = $1 WHERE number = $2",
-      [hash, accountNumber]
-    );
-
-    res.json({ success: true });
+    req.session.save(error => {
+      if (error) return next(error);
+      res.json({ success: true });
+    });
   } catch (error) {
     next(error);
   }
 });
+
+// تغيير اسم المستخدم
+app.post(
+  "/api/account/username",
+  requireLogin,
+  requireSettingsUnlocked,
+  async (req, res, next) => {
+    try {
+      const username = String(req.body.username || "").trim();
+      const password = String(req.body.password || "");
+
+      if (!/^[a-zA-Z0-9_]{3,20}$/.test(username))
+        return res.status(400).json({
+          error: "اسم المستخدم يجب أن يكون من 3 إلى 20 حرفًا أو رقمًا أو _."
+        });
+
+      if (!password)
+        return res.status(400).json({
+          error: "اكتب كلمة المرور الحالية."
+        });
+
+      const accountNumber = req.session.account.number;
+
+      const current = await pool.query(
+        "SELECT password_hash FROM accounts WHERE number = $1",
+        [accountNumber]
+      );
+
+      if (!current.rows.length ||
+          !(await bcrypt.compare(password, current.rows[0].password_hash)))
+        return res.status(401).json({
+          error: "كلمة المرور غير صحيحة."
+        });
+
+      const updated = await pool.query(
+        `UPDATE accounts SET username = $1
+         WHERE number = $2
+         RETURNING number, username`,
+        [username, accountNumber]
+      );
+
+      req.session.account.username = updated.rows[0].username;
+
+      res.json({ success: true, account: updated.rows[0] });
+    } catch (error) {
+      if (error.code === "23505")
+        return res.status(409).json({
+          error: "اسم المستخدم مستخدم بالفعل."
+        });
+      next(error);
+    }
+  }
+);
+
+// تغيير كلمة المرور
+app.post(
+  "/api/account/password",
+  requireLogin,
+  requireSettingsUnlocked,
+  async (req, res, next) => {
+    try {
+      const currentPassword = String(req.body.currentPassword || "");
+      const newPassword = String(req.body.newPassword || "");
+
+      if (newPassword.length < 8 || newPassword.length > 100)
+        return res.status(400).json({
+          error: "كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل."
+        });
+
+      const accountNumber = req.session.account.number;
+
+      const result = await pool.query(
+        "SELECT password_hash FROM accounts WHERE number = $1",
+        [accountNumber]
+      );
+
+      if (!result.rows.length ||
+          !(await bcrypt.compare(currentPassword, result.rows[0].password_hash)))
+        return res.status(401).json({
+          error: "كلمة المرور الحالية غير صحيحة."
+        });
+
+      const hash = await bcrypt.hash(newPassword, 12);
+
+      await pool.query(
+        "UPDATE accounts SET password_hash = $1 WHERE number = $2",
+        [hash, accountNumber]
+      );
+
+      res.json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 // رفع صورة الحساب
 app.post(
   "/api/account/avatar",
   requireLogin,
+  requireSettingsUnlocked,
   upload.single("photo"),
   async (req, res, next) => {
     let uploadedPath = null;
 
     try {
       if (!req.file)
-        return res.status(400).json({ error: "اختر صورة أولًا." });
+        return res.status(400).json({
+          error: "اختر صورة أولًا."
+        });
 
       const extension = extensionFor(req.file.mimetype);
       const number = req.session.account.number;
@@ -356,6 +423,12 @@ app.post(
         [number]
       );
 
+      const signed = await supabase.storage
+        .from(AVATAR_BUCKET)
+        .createSignedUrl(newPath, 3600);
+
+      if (signed.error) throw signed.error;
+
       await pool.query(
         "UPDATE accounts SET avatar_path = $1 WHERE number = $2",
         [newPath, number]
@@ -367,13 +440,9 @@ app.post(
         await supabase.storage.from(AVATAR_BUCKET).remove([oldPath]);
       }
 
-      const signed = await supabase.storage
-        .from(AVATAR_BUCKET)
-        .createSignedUrl(newPath, 3600);
-
       res.json({
         success: true,
-        avatar_url: signed.data?.signedUrl || null
+        avatar_url: signed.data.signedUrl
       });
     } catch (error) {
       if (uploadedPath) {
@@ -472,7 +541,9 @@ app.post("/api/memories/:id/publish", requireLogin, async (req, res, next) => {
 
     if (!result.rows.length) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ error: "الصورة غير موجودة أو سبق نشرها." });
+      return res.status(404).json({
+        error: "الصورة غير موجودة أو سبق نشرها."
+      });
     }
 
     const memoryId = result.rows[0].id;
