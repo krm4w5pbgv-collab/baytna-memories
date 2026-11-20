@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -515,14 +514,11 @@ async function loadOwnerAccounts(){
  }catch(error){area.textContent=error.message;}
 }
 
-// تحميل إعدادات الموقع العامة
+// تحميل إعدادات الموقع العامة للعرض فقط
 async function loadPublicSiteSettings(){
  try{
-  const response=await fetch("/api/owner/site-settings");
-  if(response.ok){
-   const data=await response.json();
-   applySiteSettings(data.settings);
-  }
+  const data=await apiJson("/api/site-settings");
+  applySiteSettings(data.settings);
  }catch(error){}
 }
 
