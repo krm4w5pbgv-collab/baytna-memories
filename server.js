@@ -13,12 +13,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const BUCKET = "baytna-private-photos";
 const AVATAR_BUCKET = "baytna-private-photos";
+const OWNER_NUMBER = 7;
+const OWNER_QR_TOKEN = process.env.OWNER_QR_TOKEN;
 
 if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32)
   throw new Error("SESSION_SECRET must be at least 32 characters.");
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is missing.");
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY)
   throw new Error("Supabase environment variables are missing.");
+if (!OWNER_QR_TOKEN || OWNER_QR_TOKEN.length < 32)
+  throw new Error("OWNER_QR_TOKEN must be at least 32 characters.");
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -93,6 +97,23 @@ function requireSettingsUnlocked(req, res, next) {
   next();
 }
 
+function requireOwnerUnlocked(req, res, next) {
+  if (!req.session.account || req.session.account.number !== OWNER_NUMBER) {
+    return res.status(403).json({ error: "غير مصرح لك." });
+  }
+
+  const unlockedAt = Number(req.session.ownerUnlockedAt || 0);
+
+  if (!unlockedAt || Date.now() - unlockedAt > 10 * 60 * 1000) {
+    delete req.session.ownerUnlockedAt;
+    return res.status(403).json({
+      error: "امسح رمز QR لفتح إعدادات الأونر."
+    });
+  }
+
+  next();
+}
+
 function extensionFor(mime) {
   return {
     "image/jpeg": "jpg",
@@ -119,7 +140,6 @@ async function initializeDatabase() {
     ADD COLUMN IF NOT EXISTS avatar_path TEXT
   `);
 
-  // كلمة مرور مستقلة لإعدادات كل حساب
   await pool.query(`
     ALTER TABLE accounts
     ADD COLUMN IF NOT EXISTS settings_password_hash TEXT
@@ -503,6 +523,156 @@ app.post(
     } catch (error) {
       if (uploadedPath)
         await supabase.storage.from(AVATAR_BUCKET).remove([uploadedPath]);
+      next(error);
+    }
+  }
+);
+
+// ==================== إعدادات الأونر ====================
+
+// معرفة هل الحساب الحالي هو الأونر
+app.get("/api/owner/status", requireLogin, (req, res) => {
+  res.json({
+    isOwner: req.session.account.number === OWNER_NUMBER
+  });
+});
+
+// التحقق من QR وفتح لوحة الأونر
+app.post("/api/owner/qr-unlock", requireLogin, async (req, res, next) => {
+  try {
+    if (req.session.account.number !== OWNER_NUMBER)
+      return res.status(403).json({ error: "هذا الحساب ليس حساب الأونر." });
+
+    const payload = String(req.body.payload || "");
+    const expected = "BAYTNA_OWNER_V1:" + OWNER_QR_TOKEN;
+
+    if (payload.length > 200)
+      return res.status(400).json({ error: "رمز QR غير صحيح." });
+
+    const suppliedBuffer = Buffer.from(payload, "utf8");
+    const expectedBuffer = Buffer.from(expected, "utf8");
+
+    const valid =
+      suppliedBuffer.length === expectedBuffer.length &&
+      crypto.timingSafeEqual(suppliedBuffer, expectedBuffer);
+
+    if (!valid)
+      return res.status(401).json({ error: "رمز QR غير صحيح." });
+
+    req.session.regenerate(error => {
+      if (error) return next(error);
+
+      req.session.account = {
+        number: OWNER_NUMBER,
+        username: req.body.username || "owner"
+      };
+      req.session.ownerUnlockedAt = Date.now();
+
+      req.session.save(error => {
+        if (error) return next(error);
+        res.json({ success: true });
+      });
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// قفل إعدادات الأونر
+app.post("/api/owner/lock", requireLogin, (req, res) => {
+  if (req.session.account.number !== OWNER_NUMBER)
+    return res.status(403).json({ error: "غير مصرح لك." });
+
+  delete req.session.ownerUnlockedAt;
+  req.session.save(error => {
+    if (error) return res.status(500).json({ error: "تعذر قفل الإعدادات." });
+    res.json({ success: true });
+  });
+});
+
+// قراءة إعدادات الموقع
+app.get(
+  "/api/owner/site-settings",
+  requireLogin,
+  requireOwnerUnlocked,
+  async (req, res, next) => {
+    try {
+      const result = await pool.query(
+        `SELECT site_name, logo, theme_color
+         FROM site_settings WHERE id = 1`
+      );
+      res.json({ settings: result.rows[0] });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// تحديث إعدادات الموقع
+app.post(
+  "/api/owner/site-settings",
+  requireLogin,
+  requireOwnerUnlocked,
+  async (req, res, next) => {
+    try {
+      const siteName = String(req.body.site_name || "").trim();
+      const logo = String(req.body.logo || "").trim();
+      const themeColor = String(req.body.theme_color || "").trim();
+
+      if (siteName.length < 2 || siteName.length > 50)
+        return res.status(400).json({
+          error: "اسم الموقع يجب أن يكون بين حرفين و50 حرفًا."
+        });
+
+      if (logo.length > 500)
+        return res.status(400).json({ error: "رابط الشعار طويل جدًا." });
+
+      if (logo && !/^https:\/\/|^http:\/\//i.test(logo))
+        return res.status(400).json({
+          error: "رابط الشعار يجب أن يبدأ بـ https:// أو http://"
+        });
+
+      if (!/^#[0-9a-fA-F]{6}$/.test(themeColor))
+        return res.status(400).json({
+          error: "لون الموقع غير صالح. استخدم صيغة مثل #8b684b."
+        });
+
+      const result = await pool.query(
+        `UPDATE site_settings
+         SET site_name = $1, logo = $2, theme_color = $3
+         WHERE id = 1
+         RETURNING site_name, logo, theme_color`,
+        [siteName, logo, themeColor]
+      );
+
+      res.json({ success: true, settings: result.rows[0] });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// عرض الحسابات دون إظهار كلمات المرور أو التشفير
+app.get(
+  "/api/owner/accounts",
+  requireLogin,
+  requireOwnerUnlocked,
+  async (req, res, next) => {
+    try {
+      const result = await pool.query(
+        `SELECT number, username, avatar_path, created_at
+         FROM accounts ORDER BY number ASC`
+      );
+
+      res.json({
+        accounts: result.rows.map(account => ({
+          number: account.number,
+          username: account.username,
+          created_at: account.created_at,
+          hasAvatar: Boolean(account.avatar_path)
+        }))
+      });
+    } catch (error) {
       next(error);
     }
   }
