@@ -58,7 +58,6 @@ if (accounts.length !== 7) {
 }
 
 app.set("trust proxy", 1);
-
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: "10kb" }));
 
@@ -77,9 +76,7 @@ app.use(session({
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024
-  },
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, callback) => {
     const allowed = [
       "image/jpeg",
@@ -121,6 +118,7 @@ function extensionFor(mime) {
   return extensions[mime];
 }
 
+// إنشاء الجداول
 async function initializeDatabase() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS accounts (
@@ -247,7 +245,7 @@ app.post("/api/login", async (req, res, next) => {
   }
 });
 
-// معلومات الحساب الحالي
+// معلومات الحساب
 app.get("/api/me", (req, res) => {
   res.json({
     authenticated: Boolean(req.session.account),
@@ -261,6 +259,8 @@ app.post(
   requireLogin,
   upload.single("photo"),
   async (req, res, next) => {
+    let uploadedPath = null;
+
     try {
       if (!req.file) {
         return res.status(400).json({
@@ -283,6 +283,8 @@ app.post(
 
       if (uploadError) throw uploadError;
 
+      uploadedPath = storagePath;
+
       const caption = String(req.body.caption || "").slice(0, 500);
 
       const result = await pool.query(
@@ -298,6 +300,13 @@ app.post(
         memory: result.rows[0]
       });
     } catch (error) {
+      if (uploadedPath) {
+        await supabase.storage
+          .from(BUCKET)
+          .remove([uploadedPath])
+          .catch(() => {});
+      }
+
       next(error);
     }
   }
@@ -338,12 +347,17 @@ app.get("/api/memories/private", requireLogin, async (req, res, next) => {
   }
 });
 
-// نشر صورة خاصة في الذكريات العامة
+// نشر صورة خاصة
 app.post("/api/memories/:id/publish", requireLogin, async (req, res, next) => {
-  try {
-    const caption = String(req.body.caption || "").slice(0, 500);
+  const client = await pool.connect();
 
-    const result = await pool.query(
+  try {
+    const caption = String(req.body.caption || "").trim().slice(0, 500);
+    const accountNumber = req.session.account.number;
+
+    await client.query("BEGIN");
+
+    const result = await client.query(
       `UPDATE memories
        SET visibility = 'public',
            caption = CASE
@@ -354,25 +368,39 @@ app.post("/api/memories/:id/publish", requireLogin, async (req, res, next) => {
          AND owner_account_id = $3
          AND visibility = 'private'
        RETURNING id, caption, created_at`,
-      [
-        caption,
-        req.params.id,
-        req.session.account.number
-      ]
+      [caption, req.params.id, accountNumber]
     );
 
     if (!result.rows.length) {
+      await client.query("ROLLBACK");
+
       return res.status(404).json({
         error: "الصورة غير موجودة أو سبق نشرها."
       });
     }
+
+    const memoryId = result.rows[0].id;
+
+    // إشعار الحسابات الأخرى
+    await client.query(
+      `INSERT INTO notifications (account_number, memory_id)
+       SELECT number, $1
+       FROM accounts
+       WHERE number <> $2`,
+      [memoryId, accountNumber]
+    );
+
+    await client.query("COMMIT");
 
     res.json({
       success: true,
       memory: result.rows[0]
     });
   } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
     next(error);
+  } finally {
+    client.release();
   }
 });
 
@@ -463,6 +491,75 @@ app.get("/api/memories/public", requireLogin, async (req, res, next) => {
   }
 });
 
+// جلب إشعارات الحساب الحالي
+app.get("/api/notifications", requireLogin, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         n.id,
+         n.is_read,
+         n.created_at,
+         m.id AS memory_id,
+         m.caption,
+         a.username AS sender_username
+       FROM notifications n
+       LEFT JOIN memories m ON m.id = n.memory_id
+       LEFT JOIN accounts a ON a.number = m.owner_account_id
+       WHERE n.account_number = $1
+       ORDER BY n.created_at DESC
+       LIMIT 100`,
+      [req.session.account.number]
+    );
+
+    res.json({
+      notifications: result.rows,
+      unread_count: result.rows.filter(item => !item.is_read).length
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// تحديد إشعار واحد كمقروء
+app.post("/api/notifications/:id/read", requireLogin, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `UPDATE notifications
+       SET is_read = TRUE
+       WHERE id = $1
+         AND account_number = $2
+       RETURNING id`,
+      [req.params.id, req.session.account.number]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({
+        error: "الإشعار غير موجود."
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// تحديد جميع الإشعارات كمقروءة
+app.post("/api/notifications/read-all", requireLogin, async (req, res, next) => {
+  try {
+    await pool.query(
+      `UPDATE notifications
+       SET is_read = TRUE
+       WHERE account_number = $1`,
+      [req.session.account.number]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // حذف صورة يملكها الحساب
 app.delete("/api/memories/:id", requireLogin, async (req, res, next) => {
   try {
@@ -516,7 +613,7 @@ app.post("/api/logout", (req, res) => {
   });
 });
 
-// الملفات والصفحات
+// الملفات
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/", (req, res) => {
@@ -532,8 +629,10 @@ app.use((error, req, res, next) => {
   console.error("Code:", error.code || "unknown");
   console.error("==================================");
 
-  res.status(error.statusCode || error.status || 500).json({
-    error: error.statusCode && error.statusCode < 500
+  const status = error.statusCode || error.status || 500;
+
+  res.status(status).json({
+    error: status < 500
       ? error.message
       : "حدث خطأ في الخادم. حاول مرة أخرى."
   });
