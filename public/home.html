@@ -5,30 +5,90 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ذكريات بيتنا</title>
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f5eee4;color:#493626}
-header{background:#806044;color:white;padding:22px;text-align:center;font-size:25px}
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#f5eee4;
+  color:#493626;
+}
+header{
+  background:#806044;
+  color:white;
+  padding:22px;
+  text-align:center;
+  font-size:25px;
+}
 main{max-width:700px;margin:25px auto;padding:15px}
-.card{background:#fffaf3;border:1px solid #dfcbb4;border-radius:16px;padding:22px;margin-bottom:20px;box-shadow:0 5px 20px #0000000d}
+.card{
+  background:#fffaf3;
+  border:1px solid #dfcbb4;
+  border-radius:16px;
+  padding:22px;
+  margin-bottom:20px;
+  box-shadow:0 5px 20px #0000000d;
+}
 h2{margin-top:0;color:#705034}
 .account{color:#8b684b;margin-bottom:15px}
 .buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px}
-button{border:0;background:#806044;color:white;padding:13px 18px;border-radius:9px;font-size:15px;cursor:pointer}
+button{
+  border:0;
+  background:#806044;
+  color:white;
+  padding:13px 18px;
+  border-radius:9px;
+  font-size:15px;
+  cursor:pointer;
+}
 button:disabled{opacity:.5}
 .delete{background:#a64d42}
+.publish{background:#64805b}
 .preview{display:none;margin-top:20px}
-.preview img,.memory img{width:100%;max-height:400px;object-fit:contain;border-radius:12px;background:#eee4d8}
-.empty{text-align:center;color:#9b8976;padding:30px 10px;border:2px dashed #d8c5ae;border-radius:12px}
+.preview img,.memory img{
+  width:100%;
+  max-height:400px;
+  object-fit:contain;
+  border-radius:12px;
+  background:#eee4d8;
+}
+.empty{
+  text-align:center;
+  color:#9b8976;
+  padding:30px 10px;
+  border:2px dashed #d8c5ae;
+  border-radius:12px;
+}
 input[type=file]{display:none}
 .note{color:#8b684b;font-size:13px;line-height:1.8;margin-top:15px}
-.memory{border:1px solid #dfcbb4;border-radius:12px;padding:12px;margin-top:15px}
-.memory p{white-space:pre-wrap}
+.memory{
+  border:1px solid #dfcbb4;
+  border-radius:12px;
+  padding:12px;
+  margin-top:15px;
+  background:#fffdf9;
+}
+.memory p{white-space:pre-wrap;line-height:1.7}
 .status{margin-top:12px;color:#705034}
+input[type=text]{
+  width:100%;
+  padding:13px;
+  border:1px solid #d8c5ae;
+  border-radius:9px;
+  font-size:15px;
+  margin-top:10px;
+  background:white;
+  color:#493626;
+}
+.memory-user{color:#806044;font-weight:bold}
+.memory-date{color:#9b8976;font-size:13px}
 </style>
 </head>
+
 <body>
 <header>🏠 ذكريات بيتنا</header>
+
 <main>
 
 <section class="card">
@@ -40,7 +100,9 @@ input[type=file]{display:none}
 <section class="card">
 <h2>📷 ألبومي الخاص</h2>
 
-<div class="empty" id="emptyMessage">لا توجد صور محفوظة حتى الآن</div>
+<div class="empty" id="emptyMessage">
+لا توجد صور محفوظة حتى الآن
+</div>
 
 <div class="buttons">
 <button onclick="document.getElementById('photoInput').click()">🖼️ اختيار صورة</button>
@@ -59,12 +121,32 @@ input[type=file]{display:none}
 </div>
 
 <div class="status" id="status"></div>
-<p class="note">الصور التي تحفظها هنا تظهر في ألبوم حسابك الخاص.</p>
+<p class="note">صورك هنا خاصة بك، ولا تظهر للآخرين إلا عندما تنشرها.</p>
 </section>
 
 <section class="card">
 <h2>🖼️ صوري المحفوظة</h2>
 <div id="gallery"></div>
+</section>
+
+<section class="card">
+<h2>🌍 الذكريات العامة</h2>
+<p class="note">هنا تظهر الذكريات التي نشرها جميع أفراد البيت.</p>
+
+<input
+  type="text"
+  id="publicSearch"
+  placeholder="ابحث برقم الذكرى أو السنة أو اسم الحساب"
+>
+
+<div class="buttons">
+<button onclick="loadPublicMemories()">🔎 بحث</button>
+<button onclick="clearSearch()">عرض الكل</button>
+</div>
+
+<div id="publicGallery">
+<div class="empty">جارٍ تحميل الذكريات...</div>
+</div>
 </section>
 
 </main>
@@ -74,167 +156,283 @@ let selectedFile = null;
 let previewUrl = null;
 
 async function loadAccount(){
-try{
-const response = await fetch("/api/me");
-const data = await response.json();
+  try{
+    const response = await fetch("/api/me");
+    const data = await response.json();
 
-if(!data.authenticated){
-location.href="/";
-return;
-}
+    if(!data.authenticated){
+      location.href="/";
+      return;
+    }
 
-document.getElementById("accountInfo").textContent =
-"الحساب: "+data.account.username+" | الرقم: "+data.account.number;
+    document.getElementById("accountInfo").textContent =
+      "الحساب: "+data.account.username+" | الرقم: "+data.account.number;
 
-await loadMemories();
-}catch(error){
-document.getElementById("accountInfo").textContent="تعذر تحميل الحساب.";
-}
+    await loadMemories();
+    await loadPublicMemories();
+
+  }catch(error){
+    document.getElementById("accountInfo").textContent =
+      "تعذر تحميل الحساب.";
+  }
 }
 
 function handlePhoto(input){
-const file=input.files[0];
-if(!file)return;
+  const file=input.files[0];
+  if(!file)return;
 
-if(!file.type.startsWith("image/")){
-alert("اختر صورة فقط.");
-input.value="";
-return;
-}
+  if(!file.type.startsWith("image/")){
+    alert("اختر صورة فقط.");
+    input.value="";
+    return;
+  }
 
-if(file.size>5*1024*1024){
-alert("حجم الصورة يجب ألا يتجاوز 5 ميجابايت.");
-input.value="";
-return;
-}
+  if(file.size>5*1024*1024){
+    alert("حجم الصورة يجب ألا يتجاوز 5 ميجابايت.");
+    input.value="";
+    return;
+  }
 
-if(previewUrl)URL.revokeObjectURL(previewUrl);
+  if(previewUrl)URL.revokeObjectURL(previewUrl);
 
-selectedFile=file;
-previewUrl=URL.createObjectURL(file);
+  selectedFile=file;
+  previewUrl=URL.createObjectURL(file);
 
-document.getElementById("previewImage").src=previewUrl;
-document.getElementById("preview").style.display="block";
-document.getElementById("status").textContent="";
+  document.getElementById("previewImage").src=previewUrl;
+  document.getElementById("preview").style.display="block";
+  document.getElementById("status").textContent="";
 }
 
 document.getElementById("photoInput").addEventListener("change",function(){
-handlePhoto(this);
+  handlePhoto(this);
 });
 
 document.getElementById("cameraInput").addEventListener("change",function(){
-handlePhoto(this);
+  handlePhoto(this);
 });
 
 function cancelPhoto(){
-selectedFile=null;
+  selectedFile=null;
 
-if(previewUrl){
-URL.revokeObjectURL(previewUrl);
-previewUrl=null;
-}
+  if(previewUrl){
+    URL.revokeObjectURL(previewUrl);
+    previewUrl=null;
+  }
 
-document.getElementById("previewImage").src="";
-document.getElementById("preview").style.display="none";
-document.getElementById("photoInput").value="";
-document.getElementById("cameraInput").value="";
+  document.getElementById("previewImage").src="";
+  document.getElementById("preview").style.display="none";
+  document.getElementById("photoInput").value="";
+  document.getElementById("cameraInput").value="";
 }
 
 async function savePhoto(){
-if(!selectedFile)return;
+  if(!selectedFile)return;
 
-const button=document.getElementById("saveButton");
-const status=document.getElementById("status");
+  const button=document.getElementById("saveButton");
+  const status=document.getElementById("status");
 
-button.disabled=true;
-status.textContent="جارٍ حفظ الصورة...";
+  button.disabled=true;
+  status.textContent="جارٍ حفظ الصورة...";
 
-try{
-const formData=new FormData();
-formData.append("photo",selectedFile);
+  try{
+    const formData=new FormData();
+    formData.append("photo",selectedFile);
 
-const response=await fetch("/api/memories/private",{
-method:"POST",
-body:formData
-});
+    const response=await fetch("/api/memories/private",{
+      method:"POST",
+      body:formData
+    });
 
-const data=await response.json();
+    const data=await response.json();
 
-if(!response.ok)throw new Error(data.error||"تعذر حفظ الصورة.");
+    if(!response.ok)throw new Error(data.error||"تعذر حفظ الصورة.");
 
-cancelPhoto();
-status.textContent="تم حفظ الصورة بنجاح.";
-await loadMemories();
+    cancelPhoto();
+    status.textContent="تم حفظ الصورة بنجاح.";
+    await loadMemories();
 
-}catch(error){
-status.textContent=error.message;
-}finally{
-button.disabled=false;
-}
+  }catch(error){
+    status.textContent=error.message;
+  }finally{
+    button.disabled=false;
+  }
 }
 
 async function loadMemories(){
-const gallery=document.getElementById("gallery");
-const empty=document.getElementById("emptyMessage");
+  const gallery=document.getElementById("gallery");
+  const empty=document.getElementById("emptyMessage");
 
-try{
-const response=await fetch("/api/memories/private");
-const data=await response.json();
+  try{
+    const response=await fetch("/api/memories/private");
+    const data=await response.json();
 
-if(!response.ok)throw new Error(data.error);
+    if(!response.ok)throw new Error(data.error);
 
-gallery.replaceChildren();
-empty.style.display=data.memories.length?"none":"block";
+    gallery.replaceChildren();
+    empty.style.display=data.memories.length?"none":"block";
 
-data.memories.forEach(memory=>{
-const card=document.createElement("div");
-card.className="memory";
+    data.memories.forEach(memory=>{
+      const card=document.createElement("div");
+      card.className="memory";
 
-const img=document.createElement("img");
-img.src=memory.image_url;
-img.alt="صورة محفوظة";
-img.loading="lazy";
+      const img=document.createElement("img");
+      img.src=memory.image_url;
+      img.alt="صورة محفوظة";
+      img.loading="lazy";
 
-const date=document.createElement("p");
-date.textContent=new Date(memory.created_at).toLocaleString("ar-SA");
+      const date=document.createElement("p");
+      date.className="memory-date";
+      date.textContent=new Date(memory.created_at).toLocaleString("ar-SA");
 
-const del=document.createElement("button");
-del.className="delete";
-del.textContent="🗑️ حذف الصورة";
-del.onclick=()=>deleteMemory(memory.id);
+      const publish=document.createElement("button");
+      publish.className="publish";
+      publish.textContent="🌍 نشر في الذكريات العامة";
+      publish.onclick=()=>publishMemory(memory.id);
 
-card.append(img,date,del);
-gallery.appendChild(card);
-});
+      const del=document.createElement("button");
+      del.className="delete";
+      del.textContent="🗑️ حذف الصورة";
+      del.onclick=()=>deleteMemory(memory.id);
 
-}catch(error){
-gallery.textContent="تعذر تحميل الصور: "+error.message;
+      const buttons=document.createElement("div");
+      buttons.className="buttons";
+      buttons.append(publish,del);
+
+      card.append(img,date,buttons);
+      gallery.appendChild(card);
+    });
+
+  }catch(error){
+    gallery.textContent="تعذر تحميل الصور: "+error.message;
+  }
 }
+
+async function publishMemory(id){
+  const caption=prompt("اكتب وصف الذكرى، مثل: ذكرى 2230");
+
+  if(caption===null)return;
+
+  if(!caption.trim()){
+    alert("اكتب وصفًا للذكرى أولًا.");
+    return;
+  }
+
+  try{
+    const response=await fetch(
+      "/api/memories/"+encodeURIComponent(id)+"/publish",
+      {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({caption:caption.trim()})
+      }
+    );
+
+    const data=await response.json();
+
+    if(!response.ok)throw new Error(data.error||"تعذر نشر الصورة.");
+
+    alert("تم نشر الذكرى بنجاح! 🌍");
+
+    await loadMemories();
+    await loadPublicMemories();
+
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+async function loadPublicMemories(){
+  const gallery=document.getElementById("publicGallery");
+  const search=document.getElementById("publicSearch").value.trim();
+
+  gallery.textContent="جارٍ تحميل الذكريات...";
+
+  try{
+    const response=await fetch(
+      "/api/memories/public?q="+encodeURIComponent(search)
+    );
+
+    const data=await response.json();
+
+    if(!response.ok)throw new Error(data.error||"تعذر تحميل الذكريات.");
+
+    gallery.replaceChildren();
+
+    if(!data.memories.length){
+      gallery.innerHTML="";
+      const empty=document.createElement("div");
+      empty.className="empty";
+      empty.textContent="لا توجد ذكريات منشورة.";
+      gallery.appendChild(empty);
+      return;
+    }
+
+    data.memories.forEach(memory=>{
+      const card=document.createElement("div");
+      card.className="memory";
+
+      const user=document.createElement("p");
+      user.className="memory-user";
+      user.textContent="👤 "+memory.username;
+
+      const img=document.createElement("img");
+      img.src=memory.image_url;
+      img.alt="ذكرى منشورة";
+      img.loading="lazy";
+
+      const caption=document.createElement("p");
+      caption.textContent=memory.caption||"ذكرى من ذكريات بيتنا";
+
+      const date=document.createElement("p");
+      date.className="memory-date";
+      date.textContent=new Date(memory.created_at).toLocaleString("ar-SA");
+
+      card.append(user,img,caption,date);
+      gallery.appendChild(card);
+    });
+
+  }catch(error){
+    gallery.textContent="تعذر تحميل الذكريات: "+error.message;
+  }
+}
+
+function clearSearch(){
+  document.getElementById("publicSearch").value="";
+  loadPublicMemories();
 }
 
 async function deleteMemory(id){
-if(!confirm("هل تريد حذف هذه الصورة؟"))return;
+  if(!confirm("هل تريد حذف هذه الصورة؟"))return;
 
-try{
-const response=await fetch("/api/memories/"+encodeURIComponent(id),{
-method:"DELETE"
-});
+  try{
+    const response=await fetch("/api/memories/"+encodeURIComponent(id),{
+      method:"DELETE"
+    });
 
-const data=await response.json();
-if(!response.ok)throw new Error(data.error);
+    const data=await response.json();
 
-await loadMemories();
-}catch(error){
-alert(error.message);
-}
+    if(!response.ok)throw new Error(data.error);
+
+    await loadMemories();
+
+  }catch(error){
+    alert(error.message);
+  }
 }
 
 async function logout(){
-await fetch("/api/logout",{method:"POST"});
-location.href="/";
+  await fetch("/api/logout",{method:"POST"});
+  location.href="/";
 }
+
+document.getElementById("publicSearch").addEventListener("keydown",function(event){
+  if(event.key==="Enter"){
+    loadPublicMemories();
+  }
+});
 
 loadAccount();
 </script>
+
 </body>
 </html>
