@@ -98,9 +98,8 @@ function requireSettingsUnlocked(req, res, next) {
 }
 
 function requireOwnerUnlocked(req, res, next) {
-  if (!req.session.account || req.session.account.number !== OWNER_NUMBER) {
+  if (!req.session.account || req.session.account.number !== OWNER_NUMBER)
     return res.status(403).json({ error: "غير مصرح لك." });
-  }
 
   const unlockedAt = Number(req.session.ownerUnlockedAt || 0);
 
@@ -110,7 +109,6 @@ function requireOwnerUnlocked(req, res, next) {
       error: "امسح رمز QR لفتح إعدادات الأونر."
     });
   }
-
   next();
 }
 
@@ -136,13 +134,11 @@ async function initializeDatabase() {
   `);
 
   await pool.query(`
-    ALTER TABLE accounts
-    ADD COLUMN IF NOT EXISTS avatar_path TEXT
+    ALTER TABLE accounts ADD COLUMN IF NOT EXISTS avatar_path TEXT
   `);
 
   await pool.query(`
-    ALTER TABLE accounts
-    ADD COLUMN IF NOT EXISTS settings_password_hash TEXT
+    ALTER TABLE accounts ADD COLUMN IF NOT EXISTS settings_password_hash TEXT
   `);
 
   await pool.query(`
@@ -161,6 +157,7 @@ async function initializeDatabase() {
   await pool.query(`
     ALTER TABLE memories ADD COLUMN IF NOT EXISTS storage_path TEXT
   `);
+
   await pool.query(`
     ALTER TABLE memories ALTER COLUMN image_url DROP NOT NULL
   `);
@@ -231,10 +228,12 @@ app.post("/api/login", async (req, res, next) => {
 
     req.session.regenerate(error => {
       if (error) return next(error);
+
       req.session.account = {
         number: account.number,
         username: account.username
       };
+
       req.session.save(error => {
         if (error) return next(error);
         res.json({ success: true, account: req.session.account });
@@ -284,7 +283,20 @@ app.get("/api/me", async (req, res, next) => {
   }
 });
 
-// معرفة هل تم إنشاء كلمة مرور الإعدادات
+// إعدادات الموقع العامة: القراءة متاحة للحسابات المسجلة
+app.get("/api/site-settings", requireLogin, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT site_name, logo, theme_color
+       FROM site_settings WHERE id = 1`
+    );
+    res.json({ settings: result.rows[0] || null });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// حالة كلمة مرور إعدادات الحساب
 app.get("/api/account/settings-status", requireLogin, async (req, res, next) => {
   try {
     const result = await pool.query(
@@ -302,7 +314,7 @@ app.get("/api/account/settings-status", requireLogin, async (req, res, next) => 
   }
 });
 
-// إنشاء كلمة مرور الإعدادات لأول مرة
+// إنشاء كلمة مرور الإعدادات
 app.post("/api/account/settings-password", requireLogin, async (req, res, next) => {
   try {
     const password = String(req.body.password || "");
@@ -319,10 +331,8 @@ app.post("/api/account/settings-password", requireLogin, async (req, res, next) 
       });
 
     const hash = await bcrypt.hash(password, 12);
-
     const result = await pool.query(
-      `UPDATE accounts
-       SET settings_password_hash = $1
+      `UPDATE accounts SET settings_password_hash = $1
        WHERE number = $2 AND settings_password_hash IS NULL
        RETURNING number`,
       [hash, req.session.account.number]
@@ -344,15 +354,12 @@ app.post("/api/account/settings-password", requireLogin, async (req, res, next) 
   }
 });
 
-// فتح الإعدادات بكلمة المرور المستقلة
+// فتح إعدادات الحساب
 app.post("/api/account/settings-unlock", requireLogin, async (req, res, next) => {
   try {
     const password = String(req.body.password || "");
-
     if (!password)
-      return res.status(400).json({
-        error: "اكتب كلمة مرور الإعدادات."
-      });
+      return res.status(400).json({ error: "اكتب كلمة مرور الإعدادات." });
 
     const result = await pool.query(
       "SELECT settings_password_hash FROM accounts WHERE number = $1",
@@ -360,7 +367,6 @@ app.post("/api/account/settings-unlock", requireLogin, async (req, res, next) =>
     );
 
     const hash = result.rows[0]?.settings_password_hash;
-
     if (!hash)
       return res.status(409).json({
         error: "أنشئ كلمة مرور الإعدادات أولًا."
@@ -528,20 +534,20 @@ app.post(
   }
 );
 
-// ==================== إعدادات الأونر ====================
-
-// معرفة هل الحساب الحالي هو الأونر
+// إعدادات الأونر
 app.get("/api/owner/status", requireLogin, (req, res) => {
   res.json({
     isOwner: req.session.account.number === OWNER_NUMBER
   });
 });
 
-// التحقق من QR وفتح لوحة الأونر
+// فتح الأونر باستخدام QR
 app.post("/api/owner/qr-unlock", requireLogin, async (req, res, next) => {
   try {
     if (req.session.account.number !== OWNER_NUMBER)
-      return res.status(403).json({ error: "هذا الحساب ليس حساب الأونر." });
+      return res.status(403).json({
+        error: "هذا الحساب ليس حساب الأونر."
+      });
 
     const payload = String(req.body.payload || "");
     const expected = "BAYTNA_OWNER_V1:" + OWNER_QR_TOKEN;
@@ -559,38 +565,31 @@ app.post("/api/owner/qr-unlock", requireLogin, async (req, res, next) => {
     if (!valid)
       return res.status(401).json({ error: "رمز QR غير صحيح." });
 
-    req.session.regenerate(error => {
+    req.session.ownerUnlockedAt = Date.now();
+
+    req.session.save(error => {
       if (error) return next(error);
-
-      req.session.account = {
-        number: OWNER_NUMBER,
-        username: req.body.username || "owner"
-      };
-      req.session.ownerUnlockedAt = Date.now();
-
-      req.session.save(error => {
-        if (error) return next(error);
-        res.json({ success: true });
-      });
+      res.json({ success: true });
     });
   } catch (error) {
     next(error);
   }
 });
 
-// قفل إعدادات الأونر
+// قفل الأونر
 app.post("/api/owner/lock", requireLogin, (req, res) => {
   if (req.session.account.number !== OWNER_NUMBER)
     return res.status(403).json({ error: "غير مصرح لك." });
 
   delete req.session.ownerUnlockedAt;
   req.session.save(error => {
-    if (error) return res.status(500).json({ error: "تعذر قفل الإعدادات." });
+    if (error)
+      return res.status(500).json({ error: "تعذر قفل الإعدادات." });
     res.json({ success: true });
   });
 });
 
-// قراءة إعدادات الموقع
+// إعدادات الموقع للأونر
 app.get(
   "/api/owner/site-settings",
   requireLogin,
@@ -608,7 +607,6 @@ app.get(
   }
 );
 
-// تحديث إعدادات الموقع
 app.post(
   "/api/owner/site-settings",
   requireLogin,
@@ -625,16 +623,18 @@ app.post(
         });
 
       if (logo.length > 500)
-        return res.status(400).json({ error: "رابط الشعار طويل جدًا." });
+        return res.status(400).json({
+          error: "رابط الشعار طويل جدًا."
+        });
 
-      if (logo && !/^https:\/\/|^http:\/\//i.test(logo))
+      if (logo && !/^https?:\/\//i.test(logo))
         return res.status(400).json({
           error: "رابط الشعار يجب أن يبدأ بـ https:// أو http://"
         });
 
       if (!/^#[0-9a-fA-F]{6}$/.test(themeColor))
         return res.status(400).json({
-          error: "لون الموقع غير صالح. استخدم صيغة مثل #8b684b."
+          error: "لون الموقع غير صالح."
         });
 
       const result = await pool.query(
@@ -652,7 +652,7 @@ app.post(
   }
 );
 
-// عرض الحسابات دون إظهار كلمات المرور أو التشفير
+// قائمة الحسابات للأونر
 app.get(
   "/api/owner/accounts",
   requireLogin,
@@ -681,6 +681,7 @@ app.get(
 // حفظ صورة خاصة
 app.post("/api/memories/private", requireLogin, upload.single("photo"), async (req, res, next) => {
   let uploadedPath = null;
+
   try {
     if (!req.file)
       return res.status(400).json({ error: "اختر صورة أولًا." });
@@ -690,9 +691,11 @@ app.post("/api/memories/private", requireLogin, upload.single("photo"), async (r
     const storagePath = `${number}/${crypto.randomUUID()}.${extension}`;
 
     const { error } = await supabase.storage.from(BUCKET).upload(
-      storagePath, req.file.buffer,
+      storagePath,
+      req.file.buffer,
       { contentType: req.file.mimetype, upsert: false }
     );
+
     if (error) throw error;
     uploadedPath = storagePath;
 
@@ -725,10 +728,14 @@ app.get("/api/memories/private", requireLogin, async (req, res, next) => {
     );
 
     const memories = [];
+
     for (const memory of result.rows) {
       const { data, error } = await supabase.storage
-        .from(BUCKET).createSignedUrl(memory.storage_path, 600);
+        .from(BUCKET)
+        .createSignedUrl(memory.storage_path, 600);
+
       if (error) throw error;
+
       memories.push({
         id: memory.id,
         caption: memory.caption,
@@ -736,6 +743,7 @@ app.get("/api/memories/private", requireLogin, async (req, res, next) => {
         image_url: data.signedUrl
       });
     }
+
     res.json({ memories });
   } catch (error) {
     next(error);
@@ -745,11 +753,13 @@ app.get("/api/memories/private", requireLogin, async (req, res, next) => {
 // نشر صورة خاصة
 app.post("/api/memories/:id/publish", requireLogin, async (req, res, next) => {
   const client = await pool.connect();
+
   try {
     const caption = String(req.body.caption || "").trim().slice(0, 500);
     const number = req.session.account.number;
 
     await client.query("BEGIN");
+
     const result = await client.query(
       `UPDATE memories SET visibility = 'public',
        caption = CASE WHEN $1 = '' THEN caption ELSE $1 END
@@ -816,10 +826,14 @@ app.get("/api/memories/public", requireLogin, async (req, res, next) => {
     }
 
     const memories = [];
+
     for (const memory of result.rows) {
       const { data, error } = await supabase.storage
-        .from(BUCKET).createSignedUrl(memory.storage_path, 3600);
+        .from(BUCKET)
+        .createSignedUrl(memory.storage_path, 3600);
+
       if (error) throw error;
+
       memories.push({
         id: memory.id,
         username: memory.username,
@@ -828,6 +842,7 @@ app.get("/api/memories/public", requireLogin, async (req, res, next) => {
         image_url: data.signedUrl
       });
     }
+
     res.json({ memories });
   } catch (error) {
     next(error);
@@ -864,8 +879,10 @@ app.post("/api/notifications/:id/read", requireLogin, async (req, res, next) => 
        WHERE id=$1 AND account_number=$2 RETURNING id`,
       [req.params.id, req.session.account.number]
     );
+
     if (!result.rows.length)
       return res.status(404).json({ error: "الإشعار غير موجود." });
+
     res.json({ success: true });
   } catch (error) {
     next(error);
@@ -899,7 +916,8 @@ app.delete("/api/memories/:id", requireLogin, async (req, res, next) => {
 
     if (memory.storage_path) {
       const { error } = await supabase.storage
-        .from(BUCKET).remove([memory.storage_path]);
+        .from(BUCKET)
+        .remove([memory.storage_path]);
       if (error) throw error;
     }
 
@@ -915,6 +933,7 @@ app.post("/api/logout", (req, res) => {
   req.session.destroy(error => {
     if (error)
       return res.status(500).json({ error: "تعذر تسجيل الخروج." });
+
     res.clearCookie("baytna.sid");
     res.json({ success: true });
   });
@@ -937,7 +956,9 @@ app.use((error, req, res, next) => {
 
   const status = error.statusCode || error.status || 500;
   res.status(status).json({
-    error: status < 500 ? error.message : "حدث خطأ في الخادم. حاول مرة أخرى."
+    error: status < 500
+      ? error.message
+      : "حدث خطأ في الخادم. حاول مرة أخرى."
   });
 });
 
