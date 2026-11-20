@@ -1,1 +1,96 @@
 
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ذكريات بيتنا</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5eee4;
+      color: #493626;
+    }
+    header {
+      background: #806044;
+      color: white;
+      padding: 22px;
+      text-align: center;
+      font-size: 24px;
+    }
+    main {
+      max-width: 650px;
+      margin: 35px auto;
+      padding: 20px;
+    }
+    .welcome {
+      background: #fffaf3;
+      border: 1px solid #dfcbb4;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+      box-shadow: 0 5px 20px #0000000d;
+    }
+    h2 { margin-top: 0; }
+    .account {
+      color: #8b684b;
+      margin: 15px 0;
+    }
+    button {
+      border: 0;
+      background: #806044;
+      color: white;
+      padding: 12px 25px;
+      border-radius: 9px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover { background: #62472f; }
+  </style>
+</head>
+<body>
+
+<header>🏠 ذكريات بيتنا</header>
+
+<main>
+  <section class="welcome">
+    <h2>أهلًا بك في ذكريات بيتنا</h2>
+    <p>مكان يجمع أجمل ذكرياتنا وصورنا.</p>
+    <div class="account" id="accountInfo">جارٍ تحميل الحساب...</div>
+    <button onclick="logout()">تسجيل الخروج</button>
+  </section>
+</main>
+
+<script>
+async function loadAccount() {
+  try {
+    const response = await fetch("/api/me");
+    const data = await response.json();
+
+    if (!data.authenticated) {
+      location.href = "/";
+      return;
+    }
+
+    document.getElementById("accountInfo").textContent =
+      "الحساب: " + data.account.username +
+      " | الرقم: " + data.account.number;
+  } catch {
+    document.getElementById("accountInfo").textContent =
+      "تعذر تحميل الحساب.";
+  }
+}
+
+async function logout() {
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/";
+}
+
+loadAccount();
+</script>
+
+</body>
+</html>
+
