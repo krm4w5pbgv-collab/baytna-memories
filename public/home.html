@@ -5,65 +5,186 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ذكريات بيتنا</title>
+
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       font-family: Arial, sans-serif;
       background: #f5eee4;
       color: #493626;
     }
+
     header {
       background: #806044;
       color: white;
       padding: 22px;
       text-align: center;
-      font-size: 24px;
+      font-size: 25px;
     }
+
     main {
-      max-width: 650px;
-      margin: 35px auto;
-      padding: 20px;
+      max-width: 700px;
+      margin: 25px auto;
+      padding: 15px;
     }
-    .welcome {
+
+    .card {
       background: #fffaf3;
       border: 1px solid #dfcbb4;
       border-radius: 16px;
-      padding: 25px;
-      text-align: center;
+      padding: 22px;
+      margin-bottom: 20px;
       box-shadow: 0 5px 20px #0000000d;
     }
-    h2 { margin-top: 0; }
+
+    h2 {
+      margin-top: 0;
+      color: #705034;
+    }
+
     .account {
       color: #8b684b;
-      margin: 15px 0;
+      margin-bottom: 15px;
     }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
     button {
       border: 0;
       background: #806044;
       color: white;
-      padding: 12px 25px;
+      padding: 13px 18px;
       border-radius: 9px;
-      font-size: 16px;
+      font-size: 15px;
       cursor: pointer;
     }
-    button:hover { background: #62472f; }
+
+    button:active {
+      transform: scale(.98);
+    }
+
+    .delete {
+      background: #a64d42;
+    }
+
+    .public {
+      background: #647b54;
+    }
+
+    .preview {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .preview img {
+      width: 100%;
+      max-height: 400px;
+      object-fit: contain;
+      border-radius: 12px;
+      background: #eee4d8;
+    }
+
+    .empty {
+      text-align: center;
+      color: #9b8976;
+      padding: 30px 10px;
+      border: 2px dashed #d8c5ae;
+      border-radius: 12px;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .note {
+      color: #8b684b;
+      font-size: 13px;
+      line-height: 1.8;
+      margin-top: 15px;
+    }
   </style>
 </head>
+
 <body>
 
 <header>🏠 ذكريات بيتنا</header>
 
 <main>
-  <section class="welcome">
+
+  <section class="card">
     <h2>أهلًا بك في ذكريات بيتنا</h2>
-    <p>مكان يجمع أجمل ذكرياتنا وصورنا.</p>
-    <div class="account" id="accountInfo">جارٍ تحميل الحساب...</div>
+    <div class="account" id="accountInfo">
+      جارٍ تحميل الحساب...
+    </div>
     <button onclick="logout()">تسجيل الخروج</button>
   </section>
+
+  <section class="card">
+    <h2>📷 ألبومي الخاص</h2>
+
+    <div class="empty" id="emptyMessage">
+      لم تختر أي صورة حتى الآن
+    </div>
+
+    <div class="buttons">
+      <button onclick="document.getElementById('photoInput').click()">
+        🖼️ اختيار صورة
+      </button>
+
+      <button onclick="document.getElementById('cameraInput').click()">
+        📸 تصوير بالكاميرا
+      </button>
+    </div>
+
+    <input
+      type="file"
+      id="photoInput"
+      accept="image/*"
+      onchange="showPhoto(this)"
+    >
+
+    <input
+      type="file"
+      id="cameraInput"
+      accept="image/*"
+      capture="environment"
+      onchange="showPhoto(this)"
+    >
+
+    <div class="preview" id="preview">
+      <img id="previewImage" alt="الصورة المحددة">
+
+      <div class="buttons">
+        <button class="delete" onclick="deletePhoto()">
+          🗑️ حذف الصورة
+        </button>
+
+        <button class="public" onclick="sendPublic()">
+          إرسال إلى الذكريات العامة
+        </button>
+      </div>
+    </div>
+
+    <p class="note">
+      ملاحظة: هذه معاينة مؤقتة للصورة على جهازك.
+      لم يتم تفعيل حفظ الصور أو نشرها على الموقع بعد.
+    </p>
+  </section>
+
 </main>
 
 <script>
+let selectedPhotoUrl = null;
+
 async function loadAccount() {
   try {
     const response = await fetch("/api/me");
@@ -77,14 +198,66 @@ async function loadAccount() {
     document.getElementById("accountInfo").textContent =
       "الحساب: " + data.account.username +
       " | الرقم: " + data.account.number;
-  } catch {
+
+  } catch (error) {
     document.getElementById("accountInfo").textContent =
       "تعذر تحميل الحساب.";
   }
 }
 
+function showPhoto(input) {
+  const file = input.files[0];
+
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    alert("اختر ملف صورة فقط.");
+    input.value = "";
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    alert("حجم الصورة يجب ألا يتجاوز 5 ميجابايت.");
+    input.value = "";
+    return;
+  }
+
+  if (selectedPhotoUrl) {
+    URL.revokeObjectURL(selectedPhotoUrl);
+  }
+
+  selectedPhotoUrl = URL.createObjectURL(file);
+
+  document.getElementById("previewImage").src =
+    selectedPhotoUrl;
+
+  document.getElementById("preview").style.display = "block";
+  document.getElementById("emptyMessage").style.display = "none";
+}
+
+function deletePhoto() {
+  if (selectedPhotoUrl) {
+    URL.revokeObjectURL(selectedPhotoUrl);
+    selectedPhotoUrl = null;
+  }
+
+  document.getElementById("previewImage").src = "";
+  document.getElementById("preview").style.display = "none";
+  document.getElementById("emptyMessage").style.display = "block";
+
+  document.getElementById("photoInput").value = "";
+  document.getElementById("cameraInput").value = "";
+}
+
+function sendPublic() {
+  alert("نشر الذكريات العامة سيتم تفعيله في الخطوة القادمة.");
+}
+
 async function logout() {
-  await fetch("/api/logout", { method: "POST" });
+  await fetch("/api/logout", {
+    method: "POST"
+  });
+
   location.href = "/";
 }
 
@@ -93,4 +266,3 @@ loadAccount();
 
 </body>
 </html>
-
