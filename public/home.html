@@ -60,13 +60,29 @@ input[type=text],input[type=password]{
 <div class="account" id="accountInfo">جارٍ تحميل الحساب...</div>
 <div class="buttons">
 <button id="notificationButton" onclick="toggleNotifications()">🔔 الإشعارات <span id="notificationCount">0</span></button>
-<button onclick="toggleSettings()">⚙️ إعدادات الحساب</button>
+<button onclick="toggleSettings()">🔒 إعدادات الحساب</button>
 <button onclick="logout()">تسجيل الخروج</button>
 </div>
 </section>
 
+<!-- قفل إعدادات الحساب -->
+<section class="card" id="settingsLockCard" style="display:none">
+<h2>🔒 تأكيد الهوية</h2>
+<p>أدخل كلمة المرور الحالية لفتح إعدادات الحساب.</p>
+<input type="password" id="settingsUnlockPassword" placeholder="كلمة المرور الحالية" autocomplete="current-password">
+<div class="buttons">
+<button onclick="unlockSettings()">فتح الإعدادات</button>
+<button class="delete" onclick="closeSettingsLock()">إلغاء</button>
+</div>
+<div class="status" id="settingsLockStatus"></div>
+</section>
+
 <section class="card" id="settingsCard" style="display:none">
 <h2>⚙️ إعدادات الحساب</h2>
+
+<div class="buttons">
+<button class="delete" onclick="lockSettings()">🔒 قفل الإعدادات</button>
+</div>
 
 <div class="settings-form">
 <h3>🖼️ صورة الحساب</h3>
@@ -189,9 +205,67 @@ async function loadAccount(){
  }
 }
 
+// فتح واجهة طلب كلمة المرور
 function toggleSettings(){
- const card=document.getElementById("settingsCard");
- card.style.display=card.style.display==="none"?"block":"none";
+ const settings=document.getElementById("settingsCard");
+ const lock=document.getElementById("settingsLockCard");
+
+ if(settings.style.display==="block"){
+  lockSettings();
+  return;
+ }
+
+ lock.style.display="block";
+ document.getElementById("settingsUnlockPassword").value="";
+ document.getElementById("settingsLockStatus").textContent="";
+}
+
+// التحقق من كلمة المرور في الخادم
+async function unlockSettings(){
+ const password=document.getElementById("settingsUnlockPassword").value;
+ const status=document.getElementById("settingsLockStatus");
+
+ if(!password){
+  status.textContent="اكتب كلمة المرور الحالية.";
+  return;
+ }
+
+ status.textContent="جارٍ التحقق...";
+
+ try{
+  const response=await fetch("/api/account/settings-unlock",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({password})
+  });
+
+  const data=await response.json();
+
+  if(!response.ok)
+   throw new Error(data.error||"تعذر فتح الإعدادات.");
+
+  document.getElementById("settingsLockCard").style.display="none";
+  document.getElementById("settingsCard").style.display="block";
+  document.getElementById("settingsUnlockPassword").value="";
+  status.textContent="";
+ }catch(error){
+  status.textContent=error.message;
+ }
+}
+
+// إلغاء نافذة التحقق
+function closeSettingsLock(){
+ document.getElementById("settingsLockCard").style.display="none";
+ document.getElementById("settingsUnlockPassword").value="";
+ document.getElementById("settingsLockStatus").textContent="";
+}
+
+// قفل الإعدادات
+function lockSettings(){
+ document.getElementById("settingsCard").style.display="none";
+ document.getElementById("settingsLockCard").style.display="none";
+ document.getElementById("settingsUnlockPassword").value="";
+ document.getElementById("settingsLockStatus").textContent="";
 }
 
 function handlePhoto(input){
@@ -485,6 +559,10 @@ async function logout(){
 
 document.getElementById("publicSearch").addEventListener("keydown",function(event){
  if(event.key==="Enter")loadPublicMemories();
+});
+
+document.getElementById("settingsUnlockPassword").addEventListener("keydown",function(event){
+ if(event.key==="Enter")unlockSettings();
 });
 
 loadAccount();
