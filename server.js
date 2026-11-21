@@ -8,6 +8,7 @@ const multer = require("multer");
 const bcrypt = require("bcryptjs");
 const { Pool } = require("pg");
 const { createClient } = require("@supabase/supabase-js");
+const QRCode = require("qrcode");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -283,7 +284,7 @@ app.get("/api/me", async (req, res, next) => {
   }
 });
 
-// إعدادات الموقع العامة: القراءة متاحة للحسابات المسجلة
+// إعدادات الموقع العامة
 app.get("/api/site-settings", requireLogin, async (req, res, next) => {
   try {
     const result = await pool.query(
@@ -539,6 +540,33 @@ app.get("/api/owner/status", requireLogin, (req, res) => {
   res.json({
     isOwner: req.session.account.number === OWNER_NUMBER
   });
+});
+
+// إنشاء صورة QR للأونر
+app.get("/api/owner/qr-image", requireLogin, async (req, res, next) => {
+  try {
+    if (req.session.account.number !== OWNER_NUMBER) {
+      return res.status(403).json({ error: "غير مصرح لك." });
+    }
+
+    const payload = "BAYTNA_OWNER_V1:" + OWNER_QR_TOKEN;
+
+    const qrImage = await QRCode.toBuffer(payload, {
+      type: "png",
+      width: 600,
+      margin: 3,
+      errorCorrectionLevel: "H"
+    });
+
+    res.set({
+      "Content-Type": "image/png",
+      "Cache-Control": "no-store, no-cache, must-revalidate, private"
+    });
+
+    res.send(qrImage);
+  } catch (error) {
+    next(error);
+  }
 });
 
 // فتح الأونر باستخدام QR
