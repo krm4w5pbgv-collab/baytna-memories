@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#806044">
+<title>لوحة الأونر | ذكريات بيتنا</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5eee4;color:#493626;font-family:Arial,sans-serif}
+header{background:#806044;color:white;padding:22px;text-align:center;font-size:23px}
+main{max-width:950px;margin:25px auto;padding:14px}
+.card{background:#fffaf3;border:1px solid #dfcbb4;border-radius:15px;padding:20px;margin-bottom:18px;box-shadow:0 5px 18px #0000000b}
+h2{color:#705034;margin-top:0}
+input{width:100%;padding:13px;border:1px solid #d8c5ae;border-radius:9px;margin:8px 0 14px;font-size:15px;background:white;color:#493626}
+input[type=color]{height:48px;padding:4px}
+button{border:0;background:#806044;color:white;padding:12px 17px;border-radius:9px;font-size:14px;cursor:pointer}
+.danger{background:#a64d42}
+.buttons{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.stat{background:#f5eee4;border:1px solid #dfcbb4;border-radius:12px;padding:16px}
+.stat strong{display:block;font-size:25px;color:#806044;margin-top:8px}
+.row{padding:13px 5px;border-bottom:1px solid #dfcbb4;line-height:1.8}
+.status{margin-top:12px;line-height:1.8;color:#705034}
+.note{font-size:13px;color:#94765c;line-height:1.8}
+.section-title{border-bottom:1px solid #dfcbb4;padding-bottom:12px}
+</style>
+</head>
+<body>
+<header>👑 لوحة الأونر — ذكريات بيتنا</header>
+<main>
+<section class="card">
+<h2>مرحبًا بك في لوحة التحكم</h2>
+<p>هذه صفحة مستقلة لإدارة موقع ذكريات بيتنا.</p>
+<div class="buttons">
+<button onclick="refreshAll()">🔄 تحديث البيانات</button>
+<button class="danger" onclick="lockOwner()">🔒 قفل لوحة الأونر</button>
+<button onclick="location.href='/home.html'">العودة للموقع</button>
+</div>
+<div id="pageStatus" class="status">جارٍ التحقق من صلاحية الدخول...</div>
+</section>
+
+<section class="card">
+<h2 class="section-title">📊 إحصائيات الموقع</h2>
+<div class="grid">
+<div class="stat">حالة الدخول<strong id="ownerState">—</strong></div>
+<div class="stat">عدد الحسابات<strong id="accountCount">—</strong></div>
+<div class="stat">آخر تحديث<strong id="lastUpdate">—</strong></div>
+</div>
+<p class="note">الإحصائيات المعروضة هنا مقتصرة على البيانات التي يوفرها الخادم حاليًا.</p>
+</section>
+
+<section class="card">
+<h2 class="section-title">🏠 إعدادات الموقع</h2>
+<label>اسم الموقع</label>
+<input id="siteName" maxlength="50" placeholder="ذكريات بيتنا">
+<label>رابط شعار الموقع</label>
+<input id="siteLogo" type="url" maxlength="500" placeholder="https://example.com/logo.png">
+<label>لون الموقع</label>
+<input id="themeColor" type="color" value="#806044">
+<div class="buttons">
+<button onclick="saveSettings()">💾 حفظ الإعدادات</button>
+<button onclick="loadSettings()">إعادة تحميل الإعدادات</button>
+</div>
+<div id="settingsStatus" class="status"></div>
+</section>
+
+<section class="card">
+<h2 class="section-title">👥 إدارة الحسابات</h2>
+<p class="note">تعرض هذه القائمة الحسابات المسجلة دون إظهار كلمات المرور أو بياناتها السرية.</p>
+<div class="buttons">
+<button onclick="loadAccounts()">🔄 تحديث الحسابات</button>
+</div>
+<div id="accountsList"><div class="row">جارٍ تحميل الحسابات...</div></div>
+</section>
+
+<section class="card">
+<h2 class="section-title">🛡️ الأمان</h2>
+<div class="row">١. التحقق من حساب الأونر قبل عرض لوحة التحكم.</div>
+<div class="row">٢. التحقق من صلاحية جلسة الأونر عند طلب البيانات.</div>
+<div class="row">٣. قفل لوحة الأونر عند الانتهاء.</div>
+<div class="row">٤. انتهاء صلاحية فتح الأونر تلقائيًا بعد عشر دقائق وفق إعداد الخادم الحالي.</div>
+<p class="note">لا تشارك رمز QR الخاص بالأونر مع أي شخص.</p>
+</section>
+
+<footer class="note" style="text-align:center;padding:15px">
+© ذكريات بيتنا
+</footer>
+</main>
+
+<script>
+async function api(url,options={}){
+ const response=await fetch(url,{credentials:"same-origin",...options});
+ let data={};
+ try{data=await response.json()}catch{}
+ if(!response.ok)throw new Error(data.error||"تعذر تنفيذ الطلب.");
+ return data;
+}
+
+async function checkOwner(){
+ try{
+  const status=await api("/api/owner/status");
+  if(!status.isOwner)throw new Error("هذا الحساب ليس حساب الأونر.");
+  const settings=await api("/api/owner/site-settings");
+  document.getElementById("ownerState").textContent="مفتوحة";
+  document.getElementById("pageStatus").textContent="تم التحقق من صلاحية الأونر.";
+  fillSettings(settings.settings);
+  await loadAccounts();
+ }catch(error){
+  document.getElementById("pageStatus").textContent=error.message+" سيتم إعادتك لصفحة الموقع.";
+  setTimeout(()=>location.href="/home.html",1800);
+ }
+}
+
+function fillSettings(settings){
+ if(!settings)return;
+ document.getElementById("siteName").value=settings.site_name||"";
+ document.getElementById("siteLogo").value=settings.logo||"";
+ document.getElementById("themeColor").value=settings.theme_color||"#806044";
+}
+
+async function loadSettings(){
+ const status=document.getElementById("settingsStatus");
+ status.textContent="جارٍ تحميل الإعدادات...";
+ try{
+  const data=await api("/api/owner/site-settings");
+  fillSettings(data.settings);
+  status.textContent="تم تحميل الإعدادات.";
+ }catch(error){status.textContent=error.message;}
+}
+
+async function saveSettings(){
+ const status=document.getElementById("settingsStatus");
+ status.textContent="جارٍ حفظ الإعدادات...";
+ try{
+  const data=await api("/api/owner/site-settings",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({
+    site_name:document.getElementById("siteName").value.trim(),
+    logo:document.getElementById("siteLogo").value.trim(),
+    theme_color:document.getElementById("themeColor").value
+   })
+  });
+  fillSettings(data.settings);
+  status.textContent="تم حفظ إعدادات الموقع بنجاح.";
+ }catch(error){status.textContent=error.message;}
+}
+
+async function loadAccounts(){
+ const area=document.getElementById("accountsList");
+ area.textContent="جارٍ تحميل الحسابات...";
+ try{
+  const data=await api("/api/owner/accounts");
+  area.replaceChildren();
+  document.getElementById("accountCount").textContent=data.accounts.length;
+  if(!data.accounts.length){
+   area.textContent="لا توجد حسابات.";
+   return;
+  }
+  data.accounts.forEach(account=>{
+   const row=document.createElement("div");
+   row.className="row";
+   row.textContent="الحساب رقم "+account.number+" — "+account.username+
+    (account.hasAvatar?" — لديه صورة":" — دون صورة");
+   area.appendChild(row);
+  });
+ }catch(error){area.textContent=error.message;}
+}
+
+async function refreshAll(){
+ document.getElementById("lastUpdate").textContent=new Date().toLocaleTimeString("ar-SA");
+ await loadSettings();
+ await loadAccounts();
+}
+
+async function lockOwner(){
+ if(!confirm("هل تريد قفل لوحة الأونر؟"))return;
+ try{
+  await api("/api/owner/lock",{method:"POST"});
+  location.href="/home.html";
+ }catch(error){
+  document.getElementById("pageStatus").textContent=error.message;
+ }
+}
+
+checkOwner();
+</script>
+</body>
+</html>
