@@ -219,6 +219,10 @@ input[type=color]{width:100%;height:48px;margin-top:10px}
 
 </main>
 
+<footer style="text-align:center;padding:20px 10px;color:#8b684b;font-size:13px;border-top:1px solid #dfcbb4;margin-top:25px">
+  © تصميم وتطوير فهد صالح المحيش — جميع الحقوق محفوظة
+</footer>
+
 <script>
 let selectedFile=null;
 let previewUrl=null;
@@ -760,9 +764,20 @@ document.getElementById("confirmSettingsPassword").addEventListener("keydown",fu
 loadAccount();
 loadPublicSiteSettings();
 </script>
-</body>
 
-<footer style="text-align:center;padding:20px 10px;color:#8b684b;font-size:13px;border-top:1px solid #dfcbb4;margin-top:25px">
-  © تصميم وتطوير فهد صالح المحيش — جميع الحقوق محفوظة
-</footer>
+<!-- تسجيل Service Worker لتثبيت التطبيق -->
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", async () => {
+    try {
+      await navigator.serviceWorker.register("/service-worker.js");
+      console.log("تم تفعيل تطبيق ذكريات بيتنا");
+    } catch (error) {
+      console.error("تعذر تفعيل التطبيق:", error);
+    }
+  });
+}
+</script>
+
+</body>
 </html>
