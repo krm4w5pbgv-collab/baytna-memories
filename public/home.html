@@ -5,8 +5,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ذكريات بيتنا</title>
-
-<!-- إعدادات تطبيق الآيفون -->
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#806044">
@@ -14,9 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="ذكريات بيتنا">
 <link rel="apple-touch-icon" href="/icon.svg">
-
 <script src="https://unpkg.com/html5-qrcode"></script>
-
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#f5eee4;color:#493626}
@@ -58,11 +54,9 @@ input[type=color]{width:100%;height:48px;margin-top:10px}
 .account-row{padding:12px;border-bottom:1px solid #dfcbb4;line-height:1.8}
 </style>
 </head>
-
 <body>
 <header id="siteHeader">🏠 ذكريات بيتنا</header>
 <main>
-
 <section class="card">
 <h2>أهلًا بك في ذكريات بيتنا</h2>
 <div id="avatarArea"></div>
@@ -103,7 +97,6 @@ input[type=color]{width:100%;height:48px;margin-top:10px}
 <div class="buttons">
 <button class="delete" onclick="lockSettings()">🔒 قفل الإعدادات</button>
 </div>
-
 <div class="settings-form">
 <h3>🖼️ صورة الحساب</h3>
 <div id="avatarPreviewArea"></div>
@@ -112,7 +105,6 @@ input[type=color]{width:100%;height:48px;margin-top:10px}
 <button onclick="uploadAvatar()">حفظ صورة الحساب</button>
 <div class="status" id="avatarStatus"></div>
 </div>
-
 <div class="settings-form">
 <h3>✏️ تغيير اسم المستخدم</h3>
 <input type="text" id="newUsername" placeholder="اسم المستخدم الجديد">
@@ -120,7 +112,6 @@ input[type=color]{width:100%;height:48px;margin-top:10px}
 <button onclick="changeUsername()">حفظ اسم المستخدم</button>
 <div class="status" id="usernameStatus"></div>
 </div>
-
 <div class="settings-form">
 <h3>🔐 تغيير كلمة مرور الحساب</h3>
 <input type="password" id="currentPassword" placeholder="كلمة مرور الحساب الحالية">
@@ -216,11 +207,10 @@ input[type=color]{width:100%;height:48px;margin-top:10px}
 </div>
 <div id="publicGallery"><div class="empty">جارٍ تحميل الذكريات...</div></div>
 </section>
-
 </main>
 
 <footer style="text-align:center;padding:20px 10px;color:#8b684b;font-size:13px;border-top:1px solid #dfcbb4;margin-top:25px">
-  © تصميم وتطوير فهد صالح المحيش — جميع الحقوق محفوظة
+© تصميم وتطوير فهد صالح المحيش — جميع الحقوق محفوظة
 </footer>
 
 <script>
@@ -399,11 +389,8 @@ async function verifyOwnerQr(payload){
    body:JSON.stringify({payload})
   });
   ownerIsUnlocked=true;
-  document.getElementById("ownerLockCard").style.display="none";
-  document.getElementById("ownerCard").style.display="block";
-  status.textContent="";
-  await loadOwnerSettings();
-  await loadOwnerAccounts();
+  status.textContent="تم التحقق. جارٍ فتح لوحة الأونر...";
+  location.href="/owner.html";
  }catch(error){status.textContent=error.message;}
 }
 
@@ -765,19 +752,17 @@ loadAccount();
 loadPublicSiteSettings();
 </script>
 
-<!-- تسجيل Service Worker لتثبيت التطبيق -->
 <script>
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", async () => {
-    try {
-      await navigator.serviceWorker.register("/service-worker.js");
-      console.log("تم تفعيل تطبيق ذكريات بيتنا");
-    } catch (error) {
-      console.error("تعذر تفعيل التطبيق:", error);
-    }
-  });
+ window.addEventListener("load", async () => {
+  try {
+   await navigator.serviceWorker.register("/service-worker.js");
+   console.log("تم تفعيل تطبيق ذكريات بيتنا");
+  } catch (error) {
+   console.error("تعذر تفعيل التطبيق:", error);
+  }
+ });
 }
 </script>
-
 </body>
 </html>
