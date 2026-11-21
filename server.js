@@ -113,6 +113,13 @@ function requireOwnerUnlocked(req, res, next) {
   next();
 }
 
+// ربط نظام إعدادات الأونر الجديد
+const ownerAdminRouter = require("./owner-admin");
+app.use(
+  "/api/owner/control",
+  ownerAdminRouter(pool, requireLogin, requireOwnerUnlocked)
+);
+
 function extensionFor(mime) {
   return {
     "image/jpeg": "jpg",
