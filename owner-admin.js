@@ -79,41 +79,58 @@ module.exports = function createOwnerAdminRouter(pool, requireLogin, requireOwne
 
   function validateValue(key, value) {
     const definition = definitions[key];
+
     if (!definition) return "إعداد غير معروف.";
 
     const [, type, a, b] = definition;
 
     if (type === "boolean") {
-      return typeof value === "boolean" ? null : "القيمة يجب أن تكون تشغيلًا أو إيقافًا.";
+      return typeof value === "boolean"
+        ? null
+        : "القيمة يجب أن تكون تشغيلًا أو إيقافًا.";
     }
 
     if (type === "number") {
-      if (typeof value !== "number" || !Number.isFinite(value))
+      if (typeof value !== "number" || !Number.isFinite(value)) {
         return "القيمة يجب أن تكون رقمًا.";
-      if (value < a || value > b)
+      }
+
+      if (value < a || value > b) {
         return `القيمة يجب أن تكون بين ${a} و${b}.`;
+      }
+
       return null;
     }
 
     if (type === "choice") {
-      return b.includes(value) ? null : "الخيار المحدد غير صالح.";
+      return Array.isArray(a) && a.includes(value)
+        ? null
+        : "الخيار المحدد غير صالح.";
     }
 
     if (type === "color") {
       return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value)
-        ? null : "صيغة اللون غير صحيحة.";
+        ? null
+        : "صيغة اللون غير صحيحة.";
     }
 
     if (type === "url") {
-      if (typeof value !== "string" || value.length > a)
+      if (typeof value !== "string" || value.length > a) {
         return "الرابط طويل جدًا أو غير صالح.";
+      }
+
       if (!value) return null;
-      return /^https?:\/\/\S+$/i.test(value) ? null : "الرابط يجب أن يبدأ بـ https:// أو http://";
+
+      return /^https?:\/\/\S+$/i.test(value)
+        ? null
+        : "الرابط يجب أن يبدأ بـ https:// أو http://";
     }
 
     if (type === "text") {
-      if (typeof value !== "string" || value.length > a)
+      if (typeof value !== "string" || value.length > a) {
         return `النص يجب ألا يتجاوز ${a} حرفًا.`;
+      }
+
       return null;
     }
 
@@ -132,6 +149,7 @@ module.exports = function createOwnerAdminRouter(pool, requireLogin, requireOwne
       );
 
       const settings = {};
+
       for (const row of result.rows) {
         settings[row.setting_key] = row.setting_value;
       }
@@ -153,16 +171,23 @@ module.exports = function createOwnerAdminRouter(pool, requireLogin, requireOwne
 
       const changes = req.body && req.body.settings;
 
-      if (!changes || typeof changes !== "object" || Array.isArray(changes))
-        return res.status(400).json({ error: "أرسل الإعدادات بصيغة صحيحة." });
+      if (!changes || typeof changes !== "object" || Array.isArray(changes)) {
+        return res.status(400).json({
+          error: "أرسل الإعدادات بصيغة صحيحة."
+        });
+      }
 
       const entries = Object.entries(changes);
 
-      if (!entries.length || entries.length > 30)
-        return res.status(400).json({ error: "عدد الإعدادات المرسلة غير صالح." });
+      if (!entries.length || entries.length > 30) {
+        return res.status(400).json({
+          error: "عدد الإعدادات المرسلة غير صالح."
+        });
+      }
 
       for (const [key, value] of entries) {
         const error = validateValue(key, value);
+
         if (error) {
           return res.status(400).json({
             error: `${key}: ${error}`
@@ -193,7 +218,9 @@ module.exports = function createOwnerAdminRouter(pool, requireLogin, requireOwne
           [
             req.session.account.number,
             "update_owner_settings",
-            JSON.stringify({ changed_keys: entries.map(([key]) => key) })
+            JSON.stringify({
+              changed_keys: entries.map(([key]) => key)
+            })
           ]
         );
 
@@ -226,7 +253,10 @@ module.exports = function createOwnerAdminRouter(pool, requireLogin, requireOwne
          LIMIT 100`
       );
 
-      res.json({ success: true, logs: result.rows });
+      res.json({
+        success: true,
+        logs: result.rows
+      });
     } catch (error) {
       next(error);
     }
