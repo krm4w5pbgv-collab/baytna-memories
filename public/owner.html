@@ -6,388 +6,264 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#806044">
 <title>لوحة الأونر - ذكريات بيتنا</title>
-
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:#f5eee4;
-  color:#493626;
-}
-header{
-  background:#806044;
-  color:white;
-  padding:22px 16px;
-  text-align:center;
-}
+body{margin:0;font-family:Arial,sans-serif;background:#f5eee4;color:#493626}
+header{background:#806044;color:white;padding:22px 16px;text-align:center}
 header h1{margin:0 0 8px}
 header p{margin:0;color:#f1dfca}
 main{max-width:950px;margin:22px auto;padding:0 14px}
-.card{
-  background:white;
-  border-radius:16px;
-  padding:18px;
-  margin-bottom:16px;
-  box-shadow:0 3px 14px #0000000c;
-}
+.card{background:white;border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 3px 14px #0000000c}
 h2{margin:0 0 15px;font-size:20px}
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:13px;
-}
-.field{
-  border:1px solid #e8ded2;
-  border-radius:12px;
-  padding:12px;
-}
-.field label{
-  display:block;
-  font-weight:bold;
-  margin-bottom:9px;
-}
-.field small{
-  display:block;
-  color:#8b7968;
-  margin-top:7px;
-}
-input,select{
-  width:100%;
-  padding:11px;
-  border:1px solid #d8c8b8;
-  border-radius:9px;
-  background:#fff;
-  color:#493626;
-  font-size:15px;
-}
-input[type="checkbox"]{
-  width:22px;
-  height:22px;
-  accent-color:#806044;
-}
-input[type="color"]{
-  height:44px;
-  padding:4px;
-}
-.check{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-}
-button{
-  border:0;
-  border-radius:10px;
-  padding:12px 17px;
-  font-size:15px;
-  font-weight:bold;
-  cursor:pointer;
-  margin:4px;
-}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:13px}
+.field{border:1px solid #e8ded2;border-radius:12px;padding:12px}
+.field label{display:block;font-weight:bold;margin-bottom:9px}
+input,select{width:100%;padding:11px;border:1px solid #d8c8b8;border-radius:9px;background:white;color:#493626;font-size:15px}
+input[type=checkbox]{width:22px;height:22px;accent-color:#806044}
+input[type=color]{height:44px;padding:4px}
+.check{display:flex;align-items:center;justify-content:space-between;gap:10px}
+button{border:0;border-radius:10px;padding:12px 17px;font-size:15px;font-weight:bold;cursor:pointer;margin:4px}
+button:disabled{opacity:.6;cursor:wait}
 .primary{background:#806044;color:white}
 .secondary{background:#eee3d7;color:#493626}
 .danger{background:#a63d35;color:white}
 .actions{display:flex;flex-wrap:wrap;gap:7px}
-#message{
-  padding:12px;
-  border-radius:10px;
-  margin-bottom:12px;
-  display:none;
-}
+#message{padding:12px;border-radius:10px;margin-bottom:12px;display:none}
 .success{background:#e5f4e8;color:#236b35}
 .error{background:#fbe8e6;color:#a12d25}
-.log{
-  padding:12px 0;
-  border-bottom:1px solid #eee4da;
-  overflow-wrap:anywhere;
-}
-.log:last-child{border-bottom:0}
+.log{padding:12px 0;border-bottom:1px solid #eee4da;overflow-wrap:anywhere}
 .muted{color:#8b7968;font-size:13px}
 footer{text-align:center;color:#8b7968;padding:20px}
 </style>
 </head>
-
 <body>
-
 <header>
-  <h1>لوحة تحكم الأونر</h1>
-  <p>ذكريات بيتنا</p>
+<h1>لوحة تحكم الأونر</h1>
+<p>ذكريات بيتنا</p>
 </header>
 
 <main>
+<section class="card">
+<h2>إدارة الإعدادات</h2>
+<div id="message"></div>
+<div class="muted" id="count">جاري تحميل الإعدادات...</div>
+<div class="grid" id="settings"></div>
+<div class="actions" style="margin-top:18px">
+<button class="primary" id="saveBtn" onclick="saveSettings()">حفظ جميع الإعدادات</button>
+<button class="secondary" onclick="loadSettings()">تحديث البيانات</button>
+</div>
+</section>
 
-  <section class="card">
-    <h2>إدارة الإعدادات</h2>
-    <div id="message"></div>
-    <div class="muted" id="count">جاري تحميل الإعدادات...</div>
-    <div class="grid" id="settings"></div>
+<section class="card">
+<h2>سجل التغييرات</h2>
+<div id="logs" class="muted">جاري تحميل السجل...</div>
+<button class="secondary" onclick="loadLogs()">تحديث السجل</button>
+</section>
 
-    <div class="actions" style="margin-top:18px">
-      <button class="primary" id="saveBtn" onclick="saveSettings()">
-        حفظ جميع الإعدادات
-      </button>
-      <button class="secondary" onclick="loadSettings()">
-        تحديث البيانات
-      </button>
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>سجل التغييرات</h2>
-    <div id="logs" class="muted">جاري تحميل السجل...</div>
-    <button class="secondary" onclick="loadLogs()">تحديث السجل</button>
-  </section>
-
-  <section class="card">
-    <h2>إدارة الجلسة</h2>
-    <p class="muted">يمكنك قفل لوحة الأونر عند الانتهاء.</p>
-    <div class="actions">
-      <button class="danger" onclick="lockOwner()">قفل لوحة الأونر</button>
-      <button class="secondary" onclick="location.href='/home.html'">العودة للموقع</button>
-    </div>
-  </section>
-
+<section class="card">
+<h2>إدارة الجلسة</h2>
+<p class="muted">يمكنك قفل لوحة الأونر عند الانتهاء.</p>
+<button class="danger" onclick="lockOwner()">قفل لوحة الأونر</button>
+<button class="secondary" onclick="location.href='/home.html'">العودة للموقع</button>
+</section>
 </main>
 
 <footer>ذكريات بيتنا ©</footer>
 
 <script>
-const API = "/api/owner/control";
+const API="/api/owner/control";
 
-const fields = [
-  {key:"site_name",label:"اسم الموقع",type:"text"},
-  {key:"logo",label:"رابط الشعار",type:"text"},
-  {key:"theme_color",label:"لون الموقع الرئيسي",type:"color"},
-  {key:"site_description",label:"وصف الموقع",type:"text"},
-  {key:"welcome_message",label:"رسالة الترحيب",type:"text"},
-  {key:"background_color",label:"لون الخلفية",type:"color"},
-  {key:"footer_text",label:"نص أسفل الموقع",type:"text"},
-  {key:"maintenance_enabled",label:"تفعيل وضع الصيانة",type:"boolean"},
-  {key:"maintenance_message",label:"رسالة الصيانة",type:"text"},
-  {key:"allow_public_memories",label:"السماح بالذكريات العامة",type:"boolean"},
-  {key:"allow_memory_uploads",label:"السماح برفع الذكريات",type:"boolean"},
-  {key:"max_upload_mb",label:"أقصى حجم لرفع الصور MB",type:"number"},
-  {key:"max_public_memories",label:"الحد الأقصى للذكريات العامة",type:"number"},
-  {key:"notifications_enabled",label:"تفعيل الإشعارات",type:"boolean"},
-  {key:"notification_sound",label:"إعداد صوت الإشعارات",type:"text"},
-  {key:"show_account_numbers",label:"إظهار أرقام الحسابات",type:"boolean"},
-  {key:"show_join_dates",label:"إظهار تواريخ الانضمام",type:"boolean"},
-  {key:"owner_session_minutes",label:"مدة جلسة الأونر بالدقائق",type:"number"},
-  {key:"settings_session_minutes",label:"مدة جلسة الإعدادات بالدقائق",type:"number"},
-  {key:"require_settings_password",label:"طلب كلمة مرور للإعدادات",type:"boolean"},
-  {key:"enable_public_search",label:"تفعيل البحث العام",type:"boolean"},
-  {key:"enable_memory_captions",label:"تفعيل أوصاف الذكريات",type:"boolean"},
-  {key:"enable_avatar_uploads",label:"السماح برفع الصور الشخصية",type:"boolean"},
-  {key:"max_avatar_mb",label:"أقصى حجم للصورة الشخصية MB",type:"number"},
-  {key:"gallery_page_size",label:"عدد الصور في صفحة المعرض",type:"number"},
-  {key:"default_memory_visibility",label:"خصوصية الذكريات الافتراضية",type:"select",
-    options:[["private","خاصة"],["public","عامة"]]},
-  {key:"allow_gif_uploads",label:"السماح بصور GIF",type:"boolean"},
-  {key:"allow_heic_uploads",label:"السماح بصور HEIC",type:"boolean"},
-  {key:"site_language",label:"لغة الموقع",type:"select",
-    options:[["ar","العربية"],["en","English"]]},
-  {key:"timezone",label:"المنطقة الزمنية",type:"select",
-    options:[["Asia/Riyadh","الرياض"],["UTC","UTC"]]}
+const fields=[
+{key:"site_name",label:"اسم الموقع",type:"text"},
+{key:"logo",label:"رابط الشعار",type:"text"},
+{key:"theme_color",label:"لون الموقع الرئيسي",type:"color"},
+{key:"site_description",label:"وصف الموقع",type:"text"},
+{key:"welcome_message",label:"رسالة الترحيب",type:"text"},
+{key:"background_color",label:"لون الخلفية",type:"color"},
+{key:"footer_text",label:"نص أسفل الموقع",type:"text"},
+{key:"maintenance_enabled",label:"تفعيل وضع الصيانة",type:"boolean"},
+{key:"maintenance_message",label:"رسالة الصيانة",type:"text"},
+{key:"allow_public_memories",label:"السماح بالذكريات العامة",type:"boolean"},
+{key:"allow_memory_uploads",label:"السماح برفع الذكريات",type:"boolean"},
+{key:"max_upload_mb",label:"أقصى حجم لرفع الصور MB",type:"number"},
+{key:"max_public_memories",label:"الحد الأقصى للذكريات العامة",type:"number"},
+{key:"notifications_enabled",label:"تفعيل الإشعارات",type:"boolean"},
+{key:"notification_sound",label:"صوت الإشعارات",type:"boolean"},
+{key:"show_account_numbers",label:"إظهار أرقام الحسابات",type:"boolean"},
+{key:"show_join_dates",label:"إظهار تواريخ الانضمام",type:"boolean"},
+{key:"owner_session_minutes",label:"مدة جلسة الأونر بالدقائق",type:"number"},
+{key:"settings_session_minutes",label:"مدة جلسة الإعدادات بالدقائق",type:"number"},
+{key:"require_settings_password",label:"طلب كلمة مرور للإعدادات",type:"boolean"},
+{key:"enable_public_search",label:"تفعيل البحث العام",type:"boolean"},
+{key:"enable_memory_captions",label:"تفعيل أوصاف الذكريات",type:"boolean"},
+{key:"enable_avatar_uploads",label:"السماح برفع الصور الشخصية",type:"boolean"},
+{key:"max_avatar_mb",label:"أقصى حجم للصورة الشخصية MB",type:"number"},
+{key:"gallery_page_size",label:"عدد الصور في صفحة المعرض",type:"number"},
+{key:"default_memory_visibility",label:"خصوصية الذكريات الافتراضية",type:"select",options:[["private","خاصة"],["public","عامة"]]},
+{key:"allow_gif_uploads",label:"السماح بصور GIF",type:"boolean"},
+{key:"allow_heic_uploads",label:"السماح بصور HEIC",type:"boolean"},
+{key:"site_language",label:"لغة الموقع",type:"select",options:[["ar","العربية"],["en","English"]]},
+{key:"timezone",label:"المنطقة الزمنية",type:"select",options:[["Asia/Riyadh","الرياض"],["UTC","UTC"]]}
 ];
 
-let currentSettings = {};
-
 function showMessage(text,type){
-  const box=document.getElementById("message");
-  box.textContent=text;
-  box.className=type;
-  box.style.display="block";
-  window.scrollTo({top:0,behavior:"smooth"});
+const box=document.getElementById("message");
+box.textContent=text;
+box.className=type;
+box.style.display="block";
+window.scrollTo({top:0,behavior:"smooth"});
 }
 
 async function request(url,options={}){
-  const response=await fetch(url,{
-    credentials:"same-origin",
-    ...options,
-    headers:{
-      "Content-Type":"application/json",
-      ...(options.headers||{})
-    }
-  });
-
-  let data={};
-  try{data=await response.json()}catch(e){}
-
-  if(!response.ok){
-    throw new Error(data.error||"تعذر تنفيذ الطلب.");
-  }
-  return data;
+const response=await fetch(url,{
+credentials:"same-origin",
+...options,
+headers:{
+...(options.headers||{}),
+"Content-Type":"application/json"
+}
+});
+let data={};
+try{data=await response.json()}catch(e){}
+if(!response.ok)throw new Error(data.error||"تعذر تنفيذ الطلب.");
+return data;
 }
 
 function renderFields(settings){
-  const container=document.getElementById("settings");
-  container.innerHTML="";
+const container=document.getElementById("settings");
+container.innerHTML="";
 
-  fields.forEach(field=>{
-    const wrapper=document.createElement("div");
-    wrapper.className="field";
+fields.forEach(field=>{
+const wrapper=document.createElement("div");
+wrapper.className="field";
+const label=document.createElement("label");
+label.textContent=field.label;
+let input;
 
-    const label=document.createElement("label");
-    label.textContent=field.label;
-
-    const value=settings[field.key];
-    let input;
-
-    if(field.type==="boolean"){
-      const line=document.createElement("div");
-      line.className="check";
-
-      input=document.createElement("input");
-      input.type="checkbox";
-      input.checked=Boolean(value);
-      input.dataset.key=field.key;
-
-      line.appendChild(document.createTextNode("تشغيل / إيقاف"));
-      line.appendChild(input);
-      wrapper.appendChild(label);
-      wrapper.appendChild(line);
-    }else if(field.type==="select"){
-      input=document.createElement("select");
-      input.dataset.key=field.key;
-
-      field.options.forEach(option=>{
-        const item=document.createElement("option");
-        item.value=option[0];
-        item.textContent=option[1];
-        input.appendChild(item);
-      });
-
-      input.value=value ?? field.options[0][0];
-      wrapper.appendChild(label);
-      wrapper.appendChild(input);
-    }else{
-      input=document.createElement("input");
-      input.type=field.type==="number"?"number":field.type;
-      input.dataset.key=field.key;
-      input.value=value ?? "";
-
-      if(field.type==="number"){
-        input.step="1";
-        input.min="0";
-      }
-
-      wrapper.appendChild(label);
-      wrapper.appendChild(input);
-    }
-
-    container.appendChild(wrapper);
-  });
-
-  document.getElementById("count").textContent=
-    "عدد الإعدادات: "+fields.length;
+if(field.type==="boolean"){
+const line=document.createElement("div");
+line.className="check";
+input=document.createElement("input");
+input.type="checkbox";
+input.checked=Boolean(settings[field.key]);
+input.dataset.key=field.key;
+line.append("تشغيل / إيقاف",input);
+wrapper.append(label,line);
+}else if(field.type==="select"){
+input=document.createElement("select");
+input.dataset.key=field.key;
+field.options.forEach(option=>{
+const item=document.createElement("option");
+item.value=option[0];
+item.textContent=option[1];
+input.appendChild(item);
+});
+input.value=settings[field.key]??field.options[0][0];
+wrapper.append(label,input);
+}else{
+input=document.createElement("input");
+input.type=field.type;
+input.dataset.key=field.key;
+input.value=settings[field.key]??"";
+if(field.type==="number"){input.step="1";input.min="0";}
+wrapper.append(label,input);
+}
+container.appendChild(wrapper);
+});
+document.getElementById("count").textContent="عدد الإعدادات: "+fields.length;
 }
 
 async function loadSettings(){
-  try{
-    const data=await request(API+"/settings");
-    currentSettings=data.settings||{};
-    renderFields(currentSettings);
-    showMessage("تم تحميل الإعدادات.","success");
-  }catch(error){
-    showMessage(error.message,"error");
-    document.getElementById("count").textContent=
-      "تعذر تحميل الإعدادات.";
-  }
+try{
+const data=await request(API+"/settings");
+renderFields(data.settings||{});
+showMessage("تم تحميل الإعدادات.","success");
+}catch(error){
+showMessage(error.message,"error");
+document.getElementById("count").textContent="تعذر تحميل الإعدادات.";
+}
 }
 
 async function saveSettings(){
-  const button=document.getElementById("saveBtn");
-  const values={};
+const button=document.getElementById("saveBtn");
+const values={};
 
-  fields.forEach(field=>{
-    const input=document.querySelector(
-      '[data-key="'+field.key+'"]'
-    );
-    if(!input)return;
+for(const field of fields){
+const input=document.querySelector('[data-key="'+field.key+'"]');
+if(!input)continue;
 
-    if(field.type==="boolean"){
-      values[field.key]=input.checked;
-    }else if(field.type==="number"){
-      values[field.key]=Number(input.value);
-    }else{
-      values[field.key]=input.value;
-    }
-  });
+if(field.type==="boolean"){
+values[field.key]=input.checked;
+}else if(field.type==="number"){
+if(input.value.trim()===""){
+showMessage("أدخل قيمة رقمية في: "+field.label,"error");
+return;
+}
+values[field.key]=Number(input.value);
+}else{
+values[field.key]=input.value;
+}
+}
 
-  button.disabled=true;
-  button.textContent="جاري الحفظ...";
+button.disabled=true;
+button.textContent="جاري الحفظ...";
 
-  try{
-    await request(API+"/settings",{
-      method:"PUT",
-      body:JSON.stringify(values)
-    });
-
-    showMessage("تم حفظ الإعدادات بنجاح.","success");
-    await loadSettings();
-  }catch(error){
-    showMessage(error.message,"error");
-  }finally{
-    button.disabled=false;
-    button.textContent="حفظ جميع الإعدادات";
-  }
+try{
+await request(API+"/settings",{
+method:"PUT",
+body:JSON.stringify({settings:values})
+});
+showMessage("تم حفظ الإعدادات بنجاح.","success");
+await loadSettings();
+}catch(error){
+showMessage(error.message,"error");
+}finally{
+button.disabled=false;
+button.textContent="حفظ جميع الإعدادات";
+}
 }
 
 async function loadLogs(){
-  const container=document.getElementById("logs");
-  container.textContent="جاري تحميل السجل...";
-
-  try{
-    const data=await request(API+"/logs");
-    const logs=data.logs||[];
-
-    container.innerHTML="";
-
-    if(!logs.length){
-      container.textContent="لا توجد تغييرات مسجلة حتى الآن.";
-      return;
-    }
-
-    logs.forEach(item=>{
-      const row=document.createElement("div");
-      row.className="log";
-
-      const action=document.createElement("strong");
-      action.textContent=item.action||"تغيير إعداد";
-
-      const details=document.createElement("div");
-      details.className="muted";
-      details.textContent=
-        item.created_at
-          ? new Date(item.created_at).toLocaleString("ar-SA")
-          : "";
-
-      const account=document.createElement("div");
-      account.className="muted";
-      account.textContent=
-        "رقم الحساب: "+(item.account_number??"غير معروف");
-
-      row.append(action,details,account);
-      container.appendChild(row);
-    });
-  }catch(error){
-    container.textContent=error.message;
-  }
+const container=document.getElementById("logs");
+container.textContent="جاري تحميل السجل...";
+try{
+const data=await request(API+"/logs");
+const logs=data.logs||[];
+container.innerHTML="";
+if(!logs.length){
+container.textContent="لا توجد تغييرات مسجلة حتى الآن.";
+return;
+}
+logs.forEach(item=>{
+const row=document.createElement("div");
+row.className="log";
+const action=document.createElement("strong");
+action.textContent=item.action||"تغيير إعداد";
+const details=document.createElement("div");
+details.className="muted";
+details.textContent=item.created_at?new Date(item.created_at).toLocaleString("ar-SA"):"";
+const account=document.createElement("div");
+account.className="muted";
+account.textContent="رقم الحساب: "+(item.account_number??"غير معروف");
+row.append(action,details,account);
+container.appendChild(row);
+});
+}catch(error){
+container.textContent=error.message;
+}
 }
 
 async function lockOwner(){
-  try{
-    await request("/api/owner/lock",{method:"POST",body:"{}"});
-    location.href="/home.html";
-  }catch(error){
-    showMessage(error.message,"error");
-  }
+try{
+await request("/api/owner/lock",{method:"POST",body:"{}"});
+location.href="/home.html";
+}catch(error){
+showMessage(error.message,"error");
+}
 }
 
 loadSettings();
 loadLogs();
 </script>
-
 </body>
 </html>
