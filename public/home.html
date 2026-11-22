@@ -7,210 +7,693 @@
 <title>ذكريات بيتنا</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#806044">
+<meta name="theme-color" content="#f3f5f5">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="ذكريات بيتنا">
 <link rel="apple-touch-icon" href="/icon.svg">
 <script src="https://unpkg.com/html5-qrcode"></script>
+
 <style>
+:root{
+ --main:#35576a;
+ --main-dark:#263f50;
+ --accent:#dce8ed;
+ --background:#f4f6f6;
+ --surface:#ffffff;
+ --text:#26343c;
+ --muted:#89969c;
+ --border:#e7ebed;
+ --radius:20px;
+}
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f5eee4;color:#493626}
-header{background:#806044;color:white;padding:22px;text-align:center;font-size:25px}
-main{max-width:700px;margin:25px auto;padding:15px}
-.card{background:#fffaf3;border:1px solid #dfcbb4;border-radius:16px;padding:22px;margin-bottom:20px;box-shadow:0 5px 20px #0000000d}
-h2{margin-top:0;color:#705034}
-.account{color:#8b684b;margin-bottom:15px}
-.buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px}
-button{border:0;background:#806044;color:white;padding:13px 18px;border-radius:9px;font-size:15px;cursor:pointer}
-button:disabled{opacity:.5}
-.delete{background:#a64d42}
-.publish{background:#64805b}
-.preview{display:none;margin-top:20px}
-.preview img,.memory img{width:100%;max-height:400px;object-fit:contain;border-radius:12px;background:#eee4d8}
-.empty{text-align:center;color:#9b8976;padding:30px 10px;border:2px dashed #d8c5ae;border-radius:12px}
+html{scroll-behavior:smooth}
+body{
+ margin:0;
+ font-family:Arial,sans-serif;
+ background:var(--background);
+ color:var(--text);
+}
+button,input,select{font-family:inherit}
+button{
+ border:0;
+ cursor:pointer;
+ transition:.2s;
+}
+button:disabled{opacity:.5;cursor:not-allowed}
+
+/* الشريط العلوي */
+.topbar{
+ background:rgba(255,255,255,.96);
+ border-bottom:1px solid var(--border);
+ position:sticky;
+ top:0;
+ z-index:20;
+}
+.nav{
+ max-width:1250px;
+ margin:auto;
+ padding:12px 22px;
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:20px;
+}
+.brand{
+ display:flex;
+ align-items:center;
+ gap:10px;
+ color:var(--text);
+ font-size:23px;
+ font-weight:bold;
+ text-decoration:none;
+ white-space:nowrap;
+}
+.brand img{
+ width:42px;
+ height:42px;
+ object-fit:contain;
+}
+.brand-mark{
+ width:42px;
+ height:42px;
+ display:grid;
+ place-items:center;
+ border-radius:13px;
+ background:var(--accent);
+ color:var(--main);
+ font-size:24px;
+}
+.nav-links{
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:9px;
+ flex-wrap:wrap;
+}
+.nav-links a{
+ text-decoration:none;
+ color:#59676e;
+ font-weight:bold;
+ padding:10px 16px;
+ border-radius:25px;
+ font-size:14px;
+}
+.nav-links a:hover,.nav-links a.active{
+ background:var(--accent);
+ color:var(--main-dark);
+}
+.nav-actions{
+ display:flex;
+ align-items:center;
+ gap:9px;
+}
+.icon-button{
+ width:40px;
+ height:40px;
+ border-radius:50%;
+ background:#f1f4f5;
+ color:var(--main);
+ font-size:18px;
+}
+.icon-button:hover{background:var(--accent)}
+#notificationCount{
+ background:#a64d42;
+ color:white;
+ border-radius:20px;
+ padding:2px 6px;
+ font-size:11px;
+}
+
+/* المحتوى */
+main{
+ max-width:1250px;
+ margin:0 auto;
+ padding:24px 22px 45px;
+}
+.section{
+ margin-top:30px;
+}
+.section-heading{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ gap:12px;
+ margin-bottom:16px;
+}
+.section-heading h2{
+ margin:0;
+ font-size:25px;
+ color:var(--text);
+}
+.section-heading a{
+ color:var(--main);
+ text-decoration:none;
+ font-size:14px;
+ font-weight:bold;
+}
+.muted{color:var(--muted);font-size:13px;line-height:1.8}
+
+/* الواجهة الترحيبية */
+.hero{
+ display:grid;
+ grid-template-columns:1.15fr 1fr;
+ min-height:340px;
+ background:white;
+ border-radius:28px;
+ overflow:hidden;
+ box-shadow:0 8px 30px #233b4b0c;
+}
+.hero-image-wrap{
+ min-height:340px;
+ position:relative;
+ background:#dfe8e9;
+ overflow:hidden;
+}
+.hero-image{
+ width:100%;
+ height:100%;
+ min-height:340px;
+ object-fit:cover;
+ display:none;
+}
+.hero-fallback{
+ width:100%;
+ height:100%;
+ min-height:340px;
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ text-align:center;
+ padding:30px;
+ color:#48616d;
+ background:
+ radial-gradient(circle at 20% 20%,#ffffff 0 8%,transparent 9%),
+ linear-gradient(135deg,#dfe9e9,#b9cdd0);
+}
+.hero-fallback .big-icon{font-size:65px;margin-bottom:12px}
+.hero-copy{
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ align-items:flex-start;
+ padding:45px 7%;
+ background:
+ radial-gradient(ellipse at 100% 100%,#e4eff0 0,transparent 48%),
+ #fff;
+}
+.eyebrow{
+ color:var(--main);
+ font-size:14px;
+ font-weight:bold;
+ margin-bottom:18px;
+}
+.hero-copy h1{
+ font-size:clamp(30px,4vw,48px);
+ line-height:1.35;
+ margin:0 0 12px;
+ color:#263b46;
+}
+.hero-copy p{
+ font-size:18px;
+ line-height:1.9;
+ color:#75838a;
+ margin:0 0 22px;
+}
+.hero-button{
+ background:var(--main);
+ color:white;
+ padding:14px 23px;
+ border-radius:30px;
+ font-size:15px;
+ font-weight:bold;
+}
+.hero-button:hover{background:var(--main-dark)}
+.hero-date{
+ margin-top:13px;
+ color:var(--muted);
+ font-size:12px;
+}
+
+/* البطاقات */
+.memory-grid{
+ display:grid;
+ grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:16px;
+}
+.memory-card{
+ overflow:hidden;
+ background:white;
+ border:1px solid var(--border);
+ border-radius:17px;
+ box-shadow:0 4px 16px #00000008;
+}
+.memory-card img{
+ display:block;
+ width:100%;
+ height:185px;
+ object-fit:cover;
+ background:#e9eeee;
+}
+.memory-card-body{padding:13px 15px}
+.memory-card-title{
+ font-weight:bold;
+ font-size:16px;
+ margin:0 0 8px;
+ line-height:1.6;
+ overflow-wrap:anywhere;
+}
+.memory-card-meta{
+ display:flex;
+ justify-content:space-between;
+ gap:8px;
+ color:var(--muted);
+ font-size:12px;
+}
+.memory-user{
+ color:var(--main);
+ font-weight:bold;
+ margin-bottom:7px;
+}
+.memory-caption{
+ white-space:pre-wrap;
+ line-height:1.7;
+ font-size:14px;
+ margin:8px 0;
+}
+.memory-actions{
+ display:flex;
+ flex-wrap:wrap;
+ gap:8px;
+ margin-top:12px;
+}
+.small-button{
+ padding:9px 12px;
+ border-radius:9px;
+ background:var(--accent);
+ color:var(--main-dark);
+ font-size:13px;
+ font-weight:bold;
+}
+.small-button.delete{background:#f8e7e5;color:#a64d42}
+.small-button.publish{background:#e6efe5;color:#55734e}
+
+/* السنوات */
+.year-panel{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:15px;
+ padding:22px;
+ border-radius:22px;
+ background:linear-gradient(110deg,#e6edef,#f2f5f5);
+}
+.year-info h2{margin:0 0 7px;font-size:21px}
+.year-info p{margin:0;color:var(--muted);font-size:13px}
+.year-list{
+ display:flex;
+ align-items:center;
+ flex-wrap:wrap;
+ gap:9px;
+}
+.year-button{
+ min-width:82px;
+ padding:11px 18px;
+ border-radius:25px;
+ color:#61747e;
+ background:#dce5e8;
+ font-weight:bold;
+}
+.year-button.active{
+ background:var(--main);
+ color:white;
+}
+.year-button:hover{filter:brightness(.96)}
+
+/* الصناديق والوظائف القديمة */
+.card{
+ background:var(--surface);
+ border:1px solid var(--border);
+ border-radius:var(--radius);
+ padding:22px;
+ margin-bottom:18px;
+ box-shadow:0 5px 20px #00000008;
+}
+.card h2{margin:0 0 15px;color:var(--main-dark)}
+.account{color:var(--muted);margin-bottom:15px;line-height:1.8}
+.buttons{display:flex;flex-wrap:wrap;gap:9px;margin-top:15px}
+.action-button{
+ background:var(--main);
+ color:white;
+ padding:12px 17px;
+ border-radius:10px;
+ font-size:14px;
+}
+.action-button:hover{background:var(--main-dark)}
+.action-button.secondary{background:#e8eff1;color:var(--main-dark)}
+.action-button.delete{background:#a64d42;color:white}
+.action-button.publish{background:#64805b;color:white}
+.empty{
+ text-align:center;
+ color:var(--muted);
+ padding:30px 10px;
+ border:2px dashed #dce4e7;
+ border-radius:13px;
+ background:#fafcfc;
+}
 input[type=file]{display:none}
-.note{color:#8b684b;font-size:13px;line-height:1.8;margin-top:15px}
-.memory{border:1px solid #dfcbb4;border-radius:12px;padding:12px;margin-top:15px;background:#fffdf9}
+.preview{display:none;margin-top:20px}
+.preview img,.memory img{
+ width:100%;
+ max-height:400px;
+ object-fit:contain;
+ border-radius:12px;
+ background:#eee;
+}
+.note{color:var(--muted);font-size:13px;line-height:1.9;margin-top:15px}
+.memory{
+ border:1px solid var(--border);
+ border-radius:13px;
+ padding:12px;
+ margin-top:13px;
+ background:#fff;
+}
 .memory p{white-space:pre-wrap;line-height:1.7}
-.status{margin-top:12px;color:#705034;line-height:1.8}
+.memory-date{color:var(--muted);font-size:13px}
+.status{margin-top:12px;color:var(--main);line-height:1.8}
 input[type=text],input[type=password],input[type=url]{
- width:100%;padding:13px;border:1px solid #d8c5ae;
- border-radius:9px;font-size:15px;margin-top:10px;
- background:white;color:#493626
+ width:100%;
+ padding:13px;
+ border:1px solid #dce4e7;
+ border-radius:9px;
+ font-size:15px;
+ margin-top:10px;
+ background:white;
+ color:var(--text);
 }
 input[type=color]{width:100%;height:48px;margin-top:10px}
-.memory-user{color:#806044;font-weight:bold}
-.memory-date{color:#9b8976;font-size:13px}
-#notificationButton{background:#64805b}
-#notificationCount{background:#a64d42;border-radius:50%;padding:3px 7px;margin-right:5px;font-size:12px}
-.notification{border-bottom:1px solid #dfcbb4;padding:12px 0;line-height:1.8}
-.notification.unread{background:#f5eee4;padding:12px;border-radius:8px}
+.notification{
+ border-bottom:1px solid var(--border);
+ padding:12px 0;
+ line-height:1.8;
+}
+.notification.unread{
+ background:#f0f5f6;
+ padding:12px;
+ border-radius:8px;
+}
 .readButton{padding:8px 12px;font-size:13px;margin-top:7px}
-.avatar{width:95px;height:95px;border-radius:50%;object-fit:cover;border:3px solid #dfcbb4;background:#eee4d8;display:block;margin:10px auto}
-.avatar-placeholder{width:95px;height:95px;border-radius:50%;background:#dfcbb4;display:flex;align-items:center;justify-content:center;font-size:38px;margin:10px auto}
-.settings-form{border-top:1px solid #dfcbb4;padding-top:18px;margin-top:18px}
+.avatar{
+ width:85px;height:85px;border-radius:50%;
+ object-fit:cover;border:3px solid var(--accent);
+ background:#eee;display:block;margin:10px auto;
+}
+.avatar-placeholder{
+ width:85px;height:85px;border-radius:50%;
+ background:var(--accent);color:var(--main);
+ display:flex;align-items:center;justify-content:center;
+ font-size:35px;margin:10px auto;
+}
+.settings-form{border-top:1px solid var(--border);padding-top:18px;margin-top:18px}
 #qr-reader{width:100%;margin-top:15px}
-.account-row{padding:12px;border-bottom:1px solid #dfcbb4;line-height:1.8}
+.account-row{padding:12px;border-bottom:1px solid var(--border);line-height:1.8}
+footer{
+ text-align:center;
+ padding:25px 12px;
+ color:var(--muted);
+ font-size:13px;
+ border-top:1px solid var(--border);
+ margin-top:25px;
+}
+
+/* إخفاء الأقسام الإدارية عند عدم فتحها */
+#settingsSetupCard,#settingsLockCard,#settingsCard,
+#ownerLockCard,#ownerCard,#notificationsCard{display:none}
+
+@media(max-width:800px){
+ .nav{flex-wrap:wrap;padding:10px 14px}
+ .brand{font-size:19px}
+ .nav-links{order:3;width:100%;justify-content:center}
+ .nav-links a{padding:8px 12px;font-size:13px}
+ .hero{grid-template-columns:1fr}
+ .hero-image-wrap,.hero-image{min-height:230px;height:230px}
+ .hero-copy{padding:28px}
+ .hero-copy h1{font-size:32px}
+ .memory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:520px){
+ main{padding:15px 12px 35px}
+ .nav{gap:9px}
+ .brand{font-size:17px}
+ .brand img,.brand-mark{width:35px;height:35px}
+ .nav-actions{margin-right:auto}
+ .nav-links{gap:2px}
+ .nav-links a{padding:8px 10px;font-size:12px}
+ .hero{border-radius:19px}
+ .hero-image-wrap,.hero-image{min-height:205px;height:205px}
+ .hero-copy{padding:24px 20px}
+ .hero-copy h1{font-size:29px}
+ .hero-copy p{font-size:15px}
+ .section-heading h2{font-size:21px}
+ .memory-grid{grid-template-columns:1fr 1fr;gap:9px}
+ .memory-card img{height:125px}
+ .memory-card-body{padding:10px}
+ .memory-card-title{font-size:13px}
+ .memory-card-meta{font-size:10px;flex-wrap:wrap}
+ .year-panel{align-items:flex-start;flex-direction:column;padding:17px}
+ .year-list{width:100%}
+ .year-button{flex:1;min-width:65px;padding:10px}
+ .card{padding:16px}
+}
 </style>
 </head>
+
 <body>
-<header id="siteHeader">🏠 ذكريات بيتنا</header>
+
+<header class="topbar">
+ <div class="nav">
+  <a href="#home" class="brand">
+   <span class="brand-mark" id="brandMark">⌂</span>
+   <img id="brandLogo" src="" alt="شعار ذكريات بيتنا" style="display:none">
+   <span id="siteName">ذكريات بيتنا</span>
+  </a>
+
+  <nav class="nav-links">
+   <a href="#home" class="active">الرئيسية</a>
+   <a href="#latest">اليوم الصور</a>
+   <a href="#years">رحلتنا</a>
+   <a href="#myAlbum">ألبومي</a>
+  </nav>
+
+  <div class="nav-actions">
+   <button class="icon-button" title="الحساب" onclick="document.getElementById('accountSection').scrollIntoView({behavior:'smooth'})">♙</button>
+   <button class="icon-button" title="الإشعارات" onclick="toggleNotifications()">♧<span id="notificationCount">0</span></button>
+  </div>
+ </div>
+</header>
+
 <main>
-<section class="card">
-<h2>أهلًا بك في ذكريات بيتنا</h2>
-<div id="avatarArea"></div>
-<div class="account" id="accountInfo">جارٍ تحميل الحساب...</div>
-<div class="buttons">
-<button id="notificationButton" onclick="toggleNotifications()">🔔 الإشعارات <span id="notificationCount">0</span></button>
-<button onclick="toggleSettings()">🔒 إعدادات الحساب</button>
-<button id="ownerButton" style="display:none" onclick="openOwner()">👑 إعدادات الأونر</button>
-<button onclick="logout()">تسجيل الخروج</button>
-</div>
+
+<!-- الواجهة الرئيسية -->
+<section class="hero" id="home">
+ <div class="hero-image-wrap">
+  <img id="heroImage" class="hero-image" src="" alt="أحدث ذكرى من ذكريات العائلة">
+  <div class="hero-fallback" id="heroFallback">
+   <div class="big-icon">🏡</div>
+   <strong>ذكريات بيتنا</strong>
+   <span class="muted">كل صورة تحمل قصة، وكل قصة تستحق أن تبقى</span>
+  </div>
+ </div>
+
+ <div class="hero-copy">
+  <div class="eyebrow">⌂ أرشيف عائلتنا الرقمي</div>
+  <h1 id="heroTitle">حكاياتنا، كما عشناها.</h1>
+  <p id="heroDescription">كل صورة تحمل قصة، وكل قصة تستحق أن تبقى.</p>
+  <button class="hero-button" onclick="document.getElementById('latest').scrollIntoView({behavior:'smooth'})">
+   استكشف ذكرياتنا ←
+  </button>
+  <div class="hero-date" id="heroDate">ذكريات تجمعنا عبر السنين</div>
+ </div>
 </section>
 
-<section class="card" id="settingsSetupCard" style="display:none">
-<h2>🔐 إنشاء كلمة مرور الإعدادات</h2>
-<p>أنشئ كلمة مرور مستقلة عن كلمة مرور تسجيل الدخول.</p>
-<input type="password" id="newSettingsPassword" placeholder="كلمة مرور الإعدادات الجديدة" autocomplete="new-password">
-<input type="password" id="confirmSettingsPassword" placeholder="تأكيد كلمة مرور الإعدادات" autocomplete="new-password">
-<div class="buttons">
-<button onclick="createSettingsPassword()">إنشاء كلمة المرور</button>
-<button class="delete" onclick="closeSettingsSetup()">إلغاء</button>
-</div>
-<div class="status" id="settingsSetupStatus"></div>
+<!-- أحدث الذكريات -->
+<section class="section" id="latest">
+ <div class="section-heading">
+  <h2>▧ آخر لحظاتنا</h2>
+  <a href="#publicGallery">عرض الكل ←</a>
+ </div>
+ <div class="memory-grid" id="latestGallery">
+  <div class="empty" style="grid-column:1/-1">جارٍ تحميل أحدث الذكريات...</div>
+ </div>
 </section>
 
-<section class="card" id="settingsLockCard" style="display:none">
-<h2>🔒 تأكيد الهوية</h2>
-<p>أدخل كلمة مرور الإعدادات المستقلة.</p>
-<input type="password" id="settingsUnlockPassword" placeholder="كلمة مرور الإعدادات" autocomplete="current-password">
-<div class="buttons">
-<button onclick="unlockSettings()">فتح الإعدادات</button>
-<button class="delete" onclick="closeSettingsLock()">إلغاء</button>
-</div>
-<div class="status" id="settingsLockStatus"></div>
+<!-- السنوات -->
+<section class="section" id="years">
+ <div class="year-panel">
+  <div class="year-info">
+   <h2>استكشف ذكرياتنا عبر الزمن</h2>
+   <p>تصفح أجمل لحظاتنا حسب السنوات</p>
+  </div>
+  <div class="year-list" id="yearList">
+   <button class="year-button active" onclick="filterYear('all',this)">الكل</button>
+  </div>
+ </div>
 </section>
 
-<section class="card" id="settingsCard" style="display:none">
-<h2>⚙️ إعدادات الحساب</h2>
-<div class="buttons">
-<button class="delete" onclick="lockSettings()">🔒 قفل الإعدادات</button>
-</div>
-<div class="settings-form">
-<h3>🖼️ صورة الحساب</h3>
-<div id="avatarPreviewArea"></div>
-<input type="file" id="avatarInput" accept="image/jpeg,image/png,image/webp,image/gif">
-<button onclick="document.getElementById('avatarInput').click()">اختيار صورة جديدة</button>
-<button onclick="uploadAvatar()">حفظ صورة الحساب</button>
-<div class="status" id="avatarStatus"></div>
-</div>
-<div class="settings-form">
-<h3>✏️ تغيير اسم المستخدم</h3>
-<input type="text" id="newUsername" placeholder="اسم المستخدم الجديد">
-<input type="password" id="usernamePassword" placeholder="كلمة مرور الحساب الحالية">
-<button onclick="changeUsername()">حفظ اسم المستخدم</button>
-<div class="status" id="usernameStatus"></div>
-</div>
-<div class="settings-form">
-<h3>🔐 تغيير كلمة مرور الحساب</h3>
-<input type="password" id="currentPassword" placeholder="كلمة مرور الحساب الحالية">
-<input type="password" id="newPassword" placeholder="كلمة مرور الحساب الجديدة">
-<input type="password" id="confirmPassword" placeholder="تأكيد كلمة المرور الجديدة">
-<button onclick="changePassword()">حفظ كلمة المرور</button>
-<div class="status" id="passwordStatus"></div>
-</div>
-<p class="note">احتفظ ببيانات حسابك في مكان آمن، ولا تشارك كلمة المرور مع أحد.</p>
+<!-- الحساب -->
+<section class="card section" id="accountSection">
+ <h2>حسابي</h2>
+ <div id="avatarArea"></div>
+ <div class="account" id="accountInfo">جارٍ تحميل الحساب...</div>
+ <div class="buttons">
+  <button class="action-button" id="notificationButton" onclick="toggleNotifications()">🔔 الإشعارات <span id="notificationCount2">0</span></button>
+  <button class="action-button secondary" onclick="toggleSettings()">🔒 إعدادات الحساب</button>
+  <button class="action-button secondary" id="ownerButton" style="display:none" onclick="openOwner()">👑 إعدادات الأونر</button>
+  <button class="action-button delete" onclick="logout()">تسجيل الخروج</button>
+ </div>
 </section>
 
-<section class="card" id="ownerLockCard" style="display:none">
-<h2>👑 دخول الأونر</h2>
-<p>امسح رمز QR الخاص بالأونر لفتح لوحة التحكم.</p>
-<div class="buttons">
-<button onclick="startQrCamera()">📷 فتح الكاميرا</button>
-<button onclick="document.getElementById('ownerQrFile').click()">🖼️ اختيار صورة QR</button>
-</div>
-<input type="file" id="ownerQrFile" accept="image/*">
-<div id="qr-reader"></div>
-<div class="status" id="ownerQrStatus"></div>
-<div class="buttons">
-<button class="delete" onclick="closeOwner()">إلغاء</button>
-</div>
+<section class="card" id="settingsSetupCard">
+ <h2>🔐 إنشاء كلمة مرور الإعدادات</h2>
+ <p>أنشئ كلمة مرور مستقلة عن كلمة مرور تسجيل الدخول.</p>
+ <input type="password" id="newSettingsPassword" placeholder="كلمة مرور الإعدادات الجديدة" autocomplete="new-password">
+ <input type="password" id="confirmSettingsPassword" placeholder="تأكيد كلمة مرور الإعدادات" autocomplete="new-password">
+ <div class="buttons">
+  <button class="action-button" onclick="createSettingsPassword()">إنشاء كلمة المرور</button>
+  <button class="action-button delete" onclick="closeSettingsSetup()">إلغاء</button>
+ </div>
+ <div class="status" id="settingsSetupStatus"></div>
 </section>
 
-<section class="card" id="ownerCard" style="display:none">
-<h2>👑 لوحة تحكم الأونر</h2>
-<p>إدارة موقع ذكريات بيتنا.</p>
-<div class="buttons">
-<button class="delete" onclick="lockOwner()">🔒 قفل لوحة الأونر</button>
-</div>
-<div class="settings-form">
-<h3>🏠 اسم الموقع</h3>
-<input type="text" id="ownerSiteName" placeholder="اسم الموقع">
-<h3>🖼️ رابط شعار الموقع</h3>
-<input type="url" id="ownerLogo" placeholder="https://example.com/logo.png">
-<h3>🎨 لون الموقع</h3>
-<input type="color" id="ownerThemeColor" value="#8b684b">
-<div class="buttons">
-<button onclick="saveOwnerSettings()">💾 حفظ إعدادات الموقع</button>
-</div>
-<div class="status" id="ownerSettingsStatus"></div>
-</div>
-<div class="settings-form">
-<h3>👥 إدارة الحسابات</h3>
-<button onclick="loadOwnerAccounts()">تحديث قائمة الحسابات</button>
-<div id="ownerAccounts"><div class="empty">اضغط تحديث لعرض الحسابات.</div></div>
-</div>
+<section class="card" id="settingsLockCard">
+ <h2>🔒 تأكيد الهوية</h2>
+ <p>أدخل كلمة مرور الإعدادات المستقلة.</p>
+ <input type="password" id="settingsUnlockPassword" placeholder="كلمة مرور الإعدادات" autocomplete="current-password">
+ <div class="buttons">
+  <button class="action-button" onclick="unlockSettings()">فتح الإعدادات</button>
+  <button class="action-button delete" onclick="closeSettingsLock()">إلغاء</button>
+ </div>
+ <div class="status" id="settingsLockStatus"></div>
 </section>
 
-<section class="card" id="notificationsCard" style="display:none">
-<h2>🔔 الإشعارات</h2>
-<div class="buttons">
-<button onclick="readAllNotifications()">تحديد الكل كمقروء</button>
-<button class="delete" onclick="toggleNotifications()">إغلاق</button>
-</div>
-<div id="notificationsList"><div class="empty">جارٍ التحميل...</div></div>
+<section class="card" id="settingsCard">
+ <h2>⚙️ إعدادات الحساب</h2>
+ <button class="action-button delete" onclick="lockSettings()">🔒 قفل الإعدادات</button>
+
+ <div class="settings-form">
+  <h3>🖼️ صورة الحساب</h3>
+  <div id="avatarPreviewArea"></div>
+  <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/webp,image/gif">
+  <button class="action-button secondary" onclick="document.getElementById('avatarInput').click()">اختيار صورة جديدة</button>
+  <button class="action-button" onclick="uploadAvatar()">حفظ صورة الحساب</button>
+  <div class="status" id="avatarStatus"></div>
+ </div>
+
+ <div class="settings-form">
+  <h3>✏️ تغيير اسم المستخدم</h3>
+  <input type="text" id="newUsername" placeholder="اسم المستخدم الجديد">
+  <input type="password" id="usernamePassword" placeholder="كلمة مرور الحساب الحالية">
+  <button class="action-button" onclick="changeUsername()">حفظ اسم المستخدم</button>
+  <div class="status" id="usernameStatus"></div>
+ </div>
+
+ <div class="settings-form">
+  <h3>🔐 تغيير كلمة مرور الحساب</h3>
+  <input type="password" id="currentPassword" placeholder="كلمة مرور الحساب الحالية">
+  <input type="password" id="newPassword" placeholder="كلمة مرور الحساب الجديدة">
+  <input type="password" id="confirmPassword" placeholder="تأكيد كلمة المرور الجديدة">
+  <button class="action-button" onclick="changePassword()">حفظ كلمة المرور</button>
+  <div class="status" id="passwordStatus"></div>
+ </div>
+ <p class="note">احتفظ ببيانات حسابك في مكان آمن، ولا تشارك كلمة المرور مع أحد.</p>
 </section>
 
-<section class="card">
-<h2>📷 ألبومي الخاص</h2>
-<div class="empty" id="emptyMessage">لا توجد صور محفوظة حتى الآن</div>
-<div class="buttons">
-<button onclick="document.getElementById('photoInput').click()">🖼️ اختيار صورة</button>
-<button onclick="document.getElementById('cameraInput').click()">📸 تصوير بالكاميرا</button>
-</div>
-<input type="file" id="photoInput" accept="image/*">
-<input type="file" id="cameraInput" accept="image/*" capture="environment">
-<div class="preview" id="preview">
-<img id="previewImage" alt="معاينة الصورة">
-<div class="buttons">
-<button id="saveButton" onclick="savePhoto()">حفظ الصورة</button>
-<button class="delete" onclick="cancelPhoto()">إلغاء</button>
-</div>
-</div>
-<div class="status" id="status"></div>
-<p class="note">صورك هنا خاصة بك، ولا تظهر للآخرين إلا عندما تنشرها.</p>
+<section class="card" id="ownerLockCard">
+ <h2>👑 دخول الأونر</h2>
+ <p>امسح رمز QR الخاص بالأونر لفتح لوحة التحكم.</p>
+ <div class="buttons">
+  <button class="action-button" onclick="startQrCamera()">📷 فتح الكاميرا</button>
+  <button class="action-button secondary" onclick="document.getElementById('ownerQrFile').click()">🖼️ اختيار صورة QR</button>
+ </div>
+ <input type="file" id="ownerQrFile" accept="image/*">
+ <div id="qr-reader"></div>
+ <div class="status" id="ownerQrStatus"></div>
+ <button class="action-button delete" onclick="closeOwner()">إلغاء</button>
 </section>
 
-<section class="card">
-<h2>🖼️ صوري المحفوظة</h2>
-<div id="gallery"></div>
+<section class="card" id="ownerCard">
+ <h2>👑 لوحة تحكم الأونر</h2>
+ <p>إدارة موقع ذكريات بيتنا.</p>
+ <button class="action-button delete" onclick="lockOwner()">🔒 قفل لوحة الأونر</button>
+ <div class="settings-form">
+  <h3>🏠 اسم الموقع</h3>
+  <input type="text" id="ownerSiteName" placeholder="اسم الموقع">
+  <h3>🖼️ رابط شعار الموقع</h3>
+  <input type="url" id="ownerLogo" placeholder="https://example.com/logo.png">
+  <h3>🎨 لون الموقع</h3>
+  <input type="color" id="ownerThemeColor" value="#35576a">
+  <button class="action-button" onclick="saveOwnerSettings()">💾 حفظ إعدادات الموقع</button>
+  <div class="status" id="ownerSettingsStatus"></div>
+ </div>
+ <div class="settings-form">
+  <h3>👥 إدارة الحسابات</h3>
+  <button class="action-button secondary" onclick="loadOwnerAccounts()">تحديث قائمة الحسابات</button>
+  <div id="ownerAccounts"><div class="empty">اضغط تحديث لعرض الحسابات.</div></div>
+ </div>
 </section>
 
-<section class="card">
-<h2>🌍 الذكريات العامة</h2>
-<p class="note">هنا تظهر الذكريات التي نشرها جميع أفراد البيت.</p>
-<input type="text" id="publicSearch" placeholder="ابحث برقم الذكرى أو السنة أو اسم الحساب">
-<div class="buttons">
-<button onclick="loadPublicMemories()">🔎 بحث</button>
-<button onclick="clearSearch()">عرض الكل</button>
-</div>
-<div id="publicGallery"><div class="empty">جارٍ تحميل الذكريات...</div></div>
+<section class="card" id="notificationsCard">
+ <h2>🔔 الإشعارات</h2>
+ <div class="buttons">
+  <button class="action-button" onclick="readAllNotifications()">تحديد الكل كمقروء</button>
+  <button class="action-button delete" onclick="toggleNotifications()">إغلاق</button>
+ </div>
+ <div id="notificationsList"><div class="empty">جارٍ التحميل...</div></div>
 </section>
+
+<!-- الألبوم الخاص -->
+<section class="card section" id="myAlbum">
+ <div class="section-heading">
+  <h2>📷 ألبومي الخاص</h2>
+ </div>
+ <div class="empty" id="emptyMessage">لا توجد صور محفوظة حتى الآن</div>
+ <div class="buttons">
+  <button class="action-button" onclick="document.getElementById('photoInput').click()">🖼️ اختيار صورة</button>
+  <button class="action-button secondary" onclick="document.getElementById('cameraInput').click()">📸 تصوير بالكاميرا</button>
+ </div>
+ <input type="file" id="photoInput" accept="image/*">
+ <input type="file" id="cameraInput" accept="image/*" capture="environment">
+ <div class="preview" id="preview">
+  <img id="previewImage" alt="معاينة الصورة">
+  <div class="buttons">
+   <button class="action-button" id="saveButton" onclick="savePhoto()">حفظ الصورة</button>
+   <button class="action-button delete" onclick="cancelPhoto()">إلغاء</button>
+  </div>
+ </div>
+ <div class="status" id="status"></div>
+ <p class="note">صورك هنا خاصة بك، ولا تظهر للآخرين إلا عندما تنشرها.</p>
+ <div id="gallery"></div>
+</section>
+
+<!-- كل الذكريات العامة -->
+<section class="card section" id="publicSection">
+ <div class="section-heading">
+  <h2>🌍 ذكريات العائلة</h2>
+ </div>
+ <p class="note">هنا تظهر الذكريات التي نشرها جميع أفراد البيت.</p>
+ <input type="text" id="publicSearch" placeholder="ابحث برقم الذكرى أو السنة أو اسم الحساب">
+ <div class="buttons">
+  <button class="action-button" onclick="loadPublicMemories()">🔎 بحث</button>
+  <button class="action-button secondary" onclick="clearSearch()">عرض الكل</button>
+ </div>
+ <div id="publicGallery"><div class="empty">جارٍ تحميل الذكريات...</div></div>
+</section>
+
 </main>
 
-<footer style="text-align:center;padding:20px 10px;color:#8b684b;font-size:13px;border-top:1px solid #dfcbb4;margin-top:25px">
-© تصميم وتطوير فهد صالح المحيش — جميع الحقوق محفوظة
+<footer>
+ © تصميم وتطوير فهد صالح المحيش — جميع الحقوق محفوظة
 </footer>
 
 <script>
@@ -221,6 +704,8 @@ let selectedAvatar=null;
 let avatarPreviewUrl=null;
 let qrScanner=null;
 let ownerIsUnlocked=false;
+let publicMemoriesCache=[];
+let selectedYear="all";
 
 function showAvatar(url,target){
  const area=document.getElementById(target);
@@ -427,7 +912,7 @@ async function loadOwnerSettings(){
   const s=data.settings;
   document.getElementById("ownerSiteName").value=s.site_name||"";
   document.getElementById("ownerLogo").value=s.logo||"";
-  document.getElementById("ownerThemeColor").value=s.theme_color||"#8b684b";
+  document.getElementById("ownerThemeColor").value=s.theme_color||"#35576a";
  }catch(error){
   document.getElementById("ownerSettingsStatus").textContent=error.message;
  }
@@ -451,17 +936,20 @@ async function saveOwnerSettings(){
 
 function applySiteSettings(settings){
  if(!settings)return;
- document.title=settings.site_name;
- const header=document.getElementById("siteHeader");
- header.textContent=settings.logo?"":"🏠 "+settings.site_name;
- header.style.background=settings.theme_color||"#806044";
+ const name=settings.site_name||"ذكريات بيتنا";
+ document.title=name;
+ document.getElementById("siteName").textContent=name;
+ document.getElementById("heroTitle").textContent="حكاياتنا، كما عشناها.";
+ document.getElementById("brandMark").style.display=settings.logo?"none":"grid";
+ const logo=document.getElementById("brandLogo");
  if(settings.logo){
-  const img=document.createElement("img");
-  img.src=settings.logo;img.alt="شعار الموقع";
-  img.style.maxWidth="75px";img.style.maxHeight="65px";
-  img.style.objectFit="contain";img.style.display="block";
-  img.style.margin="0 auto 8px";
-  header.replaceChildren(img,document.createTextNode(settings.site_name));
+  logo.src=settings.logo;
+  logo.style.display="block";
+ }else{
+  logo.style.display="none";
+ }
+ if(settings.theme_color){
+  document.documentElement.style.setProperty("--main",settings.theme_color);
  }
 }
 
@@ -486,6 +974,157 @@ async function loadPublicSiteSettings(){
   const data=await apiJson("/api/site-settings");
   applySiteSettings(data.settings);
  }catch(error){}
+}
+
+/* تحديث الصورة الرئيسية من أحدث ذكرى منشورة */
+function updateHero(memories){
+ const image=document.getElementById("heroImage");
+ const fallback=document.getElementById("heroFallback");
+ const dateLabel=document.getElementById("heroDate");
+
+ if(!memories||!memories.length){
+  image.style.display="none";
+  image.removeAttribute("src");
+  fallback.style.display="flex";
+  dateLabel.textContent="ذكريات تجمعنا عبر السنين";
+  return;
+ }
+
+ const latest=memories[0];
+ image.src=latest.image_url;
+ image.style.display="block";
+ fallback.style.display="none";
+
+ dateLabel.textContent=latest.created_at
+  ? "أحدث ذكرى · "+new Date(latest.created_at).toLocaleDateString("ar-SA")
+  : "أحدث ذكريات العائلة";
+ image.onerror=()=>{
+  image.style.display="none";
+  fallback.style.display="flex";
+ };
+}
+
+/* السنوات */
+function buildYearButtons(memories){
+ const years=[...new Set(memories.map(item=>
+  new Date(item.created_at).getFullYear()
+ ).filter(year=>Number.isFinite(year)))].sort((a,b)=>b-a);
+
+ const list=document.getElementById("yearList");
+ list.replaceChildren();
+
+ const all=document.createElement("button");
+ all.className="year-button"+(selectedYear==="all"?" active":"");
+ all.textContent="الكل";
+ all.onclick=()=>filterYear("all");
+ list.appendChild(all);
+
+ years.forEach(year=>{
+  const button=document.createElement("button");
+  button.className="year-button"+(String(selectedYear)===String(year)?" active":"");
+  button.textContent=year;
+  button.onclick=()=>filterYear(String(year));
+  list.appendChild(button);
+ });
+}
+
+function filterYear(year){
+ selectedYear=year;
+ buildYearButtons(publicMemoriesCache);
+ renderPublicMemories();
+}
+
+/* بطاقات أحدث الذكريات */
+function renderLatest(memories){
+ const area=document.getElementById("latestGallery");
+ area.replaceChildren();
+
+ if(!memories.length){
+  const empty=document.createElement("div");
+  empty.className="empty";
+  empty.style.gridColumn="1/-1";
+  empty.textContent="ستظهر أحدث ذكريات العائلة هنا عند نشر أول صورة.";
+  area.appendChild(empty);
+  return;
+ }
+
+ memories.slice(0,3).forEach(memory=>{
+  const card=document.createElement("article");
+  card.className="memory-card";
+
+  const img=document.createElement("img");
+  img.src=memory.image_url;
+  img.alt="ذكرى من ذكريات العائلة";
+  img.loading="lazy";
+
+  const body=document.createElement("div");
+  body.className="memory-card-body";
+
+  const title=document.createElement("p");
+  title.className="memory-card-title";
+  title.textContent=memory.caption||"لحظة من ذكرياتنا";
+
+  const meta=document.createElement("div");
+  meta.className="memory-card-meta";
+
+  const date=document.createElement("span");
+  date.textContent=memory.created_at
+   ?new Date(memory.created_at).toLocaleDateString("ar-SA")
+   :"";
+
+  const user=document.createElement("span");
+  user.textContent=memory.username||"من العائلة";
+
+  meta.append(date,user);
+  body.append(title,meta);
+  card.append(img,body);
+  area.appendChild(card);
+ });
+}
+
+function renderPublicMemories(){
+ const gallery=document.getElementById("publicGallery");
+ const filtered=selectedYear==="all"
+  ?publicMemoriesCache
+  :publicMemoriesCache.filter(memory=>
+    String(new Date(memory.created_at).getFullYear())===String(selectedYear)
+   );
+
+ gallery.replaceChildren();
+
+ if(!filtered.length){
+  const empty=document.createElement("div");
+  empty.className="empty";
+  empty.textContent="لا توجد ذكريات في هذه السنة.";
+  gallery.appendChild(empty);
+  return;
+ }
+
+ filtered.forEach(memory=>{
+  const card=document.createElement("div");
+  card.className="memory";
+
+  const user=document.createElement("p");
+  user.className="memory-user";
+  user.textContent="👤 "+(memory.username||"أحد أفراد البيت");
+
+  const img=document.createElement("img");
+  img.src=memory.image_url;
+  img.alt="ذكرى منشورة";
+  img.loading="lazy";
+
+  const caption=document.createElement("p");
+  caption.textContent=memory.caption||"ذكرى من ذكريات بيتنا";
+
+  const date=document.createElement("p");
+  date.className="memory-date";
+  date.textContent=memory.created_at
+   ?new Date(memory.created_at).toLocaleString("ar-SA")
+   :"";
+
+  card.append(user,img,caption,date);
+  gallery.appendChild(card);
+ });
 }
 
 function handlePhoto(input){
@@ -620,9 +1259,9 @@ async function loadMemories(){
    const card=document.createElement("div");card.className="memory";
    const img=document.createElement("img");img.src=memory.image_url;img.alt="صورة محفوظة";img.loading="lazy";
    const date=document.createElement("p");date.className="memory-date";date.textContent=new Date(memory.created_at).toLocaleString("ar-SA");
-   const publish=document.createElement("button");publish.className="publish";publish.textContent="🌍 نشر في الذكريات العامة";publish.onclick=()=>publishMemory(memory.id);
-   const del=document.createElement("button");del.className="delete";del.textContent="🗑️ حذف الصورة";del.onclick=()=>deleteMemory(memory.id);
-   const buttons=document.createElement("div");buttons.className="buttons";buttons.append(publish,del);
+   const publish=document.createElement("button");publish.className="small-button publish";publish.textContent="🌍 نشر في الذكريات العامة";publish.onclick=()=>publishMemory(memory.id);
+   const del=document.createElement("button");del.className="small-button delete";del.textContent="🗑️ حذف الصورة";del.onclick=()=>deleteMemory(memory.id);
+   const buttons=document.createElement("div");buttons.className="memory-actions";buttons.append(publish,del);
    card.append(img,date,buttons);gallery.appendChild(card);
   });
  }catch(error){gallery.textContent="تعذر تحميل الصور: "+error.message;}
@@ -648,23 +1287,22 @@ async function loadPublicMemories(){
  gallery.textContent="جارٍ تحميل الذكريات...";
  try{
   const data=await apiJson("/api/memories/public?q="+encodeURIComponent(search));
-  gallery.replaceChildren();
-  if(!data.memories.length){
-   const empty=document.createElement("div");empty.className="empty";empty.textContent="لا توجد ذكريات منشورة.";gallery.appendChild(empty);return;
-  }
-  data.memories.forEach(memory=>{
-   const card=document.createElement("div");card.className="memory";
-   const user=document.createElement("p");user.className="memory-user";user.textContent="👤 "+memory.username;
-   const img=document.createElement("img");img.src=memory.image_url;img.alt="ذكرى منشورة";img.loading="lazy";
-   const caption=document.createElement("p");caption.textContent=memory.caption||"ذكرى من ذكريات بيتنا";
-   const date=document.createElement("p");date.className="memory-date";date.textContent=new Date(memory.created_at).toLocaleString("ar-SA");
-   card.append(user,img,caption,date);gallery.appendChild(card);
-  });
- }catch(error){gallery.textContent="تعذر تحميل الذكريات: "+error.message;}
+  publicMemoriesCache=data.memories||[];
+
+  updateHero(publicMemoriesCache);
+  renderLatest(publicMemoriesCache);
+  buildYearButtons(publicMemoriesCache);
+  renderPublicMemories();
+ }catch(error){
+  gallery.textContent="تعذر تحميل الذكريات: "+error.message;
+  document.getElementById("latestGallery").innerHTML=
+   '<div class="empty" style="grid-column:1/-1">تعذر تحميل أحدث الذكريات.</div>';
+ }
 }
 
 function clearSearch(){
  document.getElementById("publicSearch").value="";
+ selectedYear="all";
  loadPublicMemories();
 }
 
@@ -679,7 +1317,9 @@ async function deleteMemory(id){
 async function loadNotifications(){
  try{
   const data=await apiJson("/api/notifications");
-  document.getElementById("notificationCount").textContent=Number(data.unread_count||0);
+  const count=Number(data.unread_count||0);
+  document.getElementById("notificationCount").textContent=count;
+  document.getElementById("notificationCount2").textContent=count;
   renderNotifications(data.notifications||[]);
  }catch(error){
   document.getElementById("notificationsList").textContent="تعذر تحميل الإشعارات.";
@@ -703,7 +1343,7 @@ function renderNotifications(items){
   row.append(message,date);
   if(!item.is_read){
    const button=document.createElement("button");
-   button.className="readButton";button.textContent="تحديد كمقروء";
+   button.className="readButton action-button secondary";button.textContent="تحديد كمقروء";
    button.onclick=()=>readNotification(item.id);
    row.appendChild(button);
   }
@@ -715,7 +1355,10 @@ function toggleNotifications(){
  const card=document.getElementById("notificationsCard");
  const opening=card.style.display==="none";
  card.style.display=opening?"block":"none";
- if(opening)loadNotifications();
+ if(opening){
+  loadNotifications();
+  card.scrollIntoView({behavior:"smooth"});
+ }
 }
 
 async function readNotification(id){
@@ -753,13 +1396,13 @@ loadPublicSiteSettings();
 </script>
 
 <script>
-if ("serviceWorker" in navigator) {
- window.addEventListener("load", async () => {
-  try {
+if("serviceWorker" in navigator){
+ window.addEventListener("load",async()=>{
+  try{
    await navigator.serviceWorker.register("/service-worker.js");
    console.log("تم تفعيل تطبيق ذكريات بيتنا");
-  } catch (error) {
-   console.error("تعذر تفعيل التطبيق:", error);
+  }catch(error){
+   console.error("تعذر تفعيل التطبيق:",error);
   }
  });
 }
